@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -1132,6 +1134,87 @@
 const STORAGE_KEY = 'eeu_saved_records';
 const DEFAULT_USERNAME = "Co.center";
 const DEFAULT_PASSWORD = "Eeu@7";
+        const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 1. SAVE INFO (Real-time upload)
+function saveInfo() {
+  const title = document.getElementById('titleInput').value;
+  const category = document.getElementById('categoryInput').value;
+  const details = document.getElementById('detailsInput').value;
+
+  if(!title || !details) {
+    alert("Please fill in the required fields.");
+    return;
+  }
+
+  db.collection("savedInfo").add({
+    title: title,
+    category: category,
+    details: details,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(() => {
+    clearForm();
+    // No need to manually update UI here because the real-time listener will catch it instantly!
+  })
+  .catch((error) => {
+    console.error("Error adding document: ", error);
+  });
+}
+
+// 2. REAL-TIME LISTENER (Instantly updates for all users when data changes)
+db.collection("savedInfo").orderBy("createdAt", "desc")
+  .onSnapshot((snapshot) => {
+    const container = document.getElementById('savedRecordsList');
+    container.innerHTML = '';
+
+    snapshot.forEach((doc) => {
+      const item = doc.data();
+      const id = doc.id;
+
+      container.innerHTML += `
+        <div class="record-card" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+          <strong>${item.title}</strong> (${item.category})
+          <p>${item.details}</p>
+          <button onclick="deleteItem('${id}')">Delete</button>
+          <button onclick="copyItem('${item.details}')">Copy</button>
+        </div>
+      `;
+    });
+  });
+
+// 3. DELETE INFO
+function deleteItem(id) {
+  db.collection("savedInfo").doc(id).delete().then(() => {
+    // Instantly removes from all users' screens automatically
+  }).catch((error) => {
+    console.error("Error removing document: ", error);
+  });
+}
+
+// 4. COPY INFO
+function copyItem(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Copied to clipboard!");
+  });
+}
+
+function clearForm() {
+  document.getElementById('titleInput').value = '';
+  document.getElementById('categoryInput').value = '';
+  document.getElementById('detailsInput').value = '';
+}
 
 let savedRecords = [];
 let unreadSavedCount = 0;
