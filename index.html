@@ -1,0 +1,2250 @@
+
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEU Feeder & Location Portal</title>
+    <!-- Google Fonts: Ethiopic and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Special Blue ONLY for requested toggle buttons & panel
+                        customBlue: {
+                            50: '#eef3ff',
+                            100: '#e0eaff',
+                            200: '#c7d7fe',
+                            300: '#a4bcfd',
+                            400: '#7a96fc',
+                            500: '#526cf9',
+                            600: '#185BFF', // Vibrant Blue from image
+                            700: '#1347db',
+                            800: '#163ab1',
+                            900: '#17348c',
+                            950: '#0d1f5e',
+                        },
+                        // Green for default portal theme
+                        customGreen: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            950: '#052e16',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Ethiopic', 'sans-serif'],
+                        mono: ['Inter', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif;
+        }
+        .table-container {
+            max-height: 480px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.75rem;
+        }
+        .table-container th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-2 sm:p-4">
+    <!-- Toast Alert -->
+    <div id="copyToast" class="hidden fixed bottom-6 right-6 bg-customGreen-800 text-white px-6 py-3.5 rounded-xl shadow-2xl font-bold text-base transition-all z-50 flex items-center gap-2.5">
+        <span class="text-xl">✅</span> <span id="toastMsg">Action completed successfully!</span>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">✏️ Edit Saved Information</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-extrabold text-xl">&times;</button>
+            </div>
+            <form id="editRecordForm" onsubmit="handleUpdateRecord(event)" class="space-y-4">
+                <input type="hidden" id="editRecordId">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Title / Title Code:</label>
+                    <input type="text" id="editTitle" required class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Category / Type:</label>
+                    <input type="text" id="editCategory" required class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Details / Description:</label>
+                    <textarea id="editDetails" rows="3" required class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 px-5 rounded-xl text-sm transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-customBlue-600 hover:bg-customBlue-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm shadow-md transition">
+                        💾 Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="max-w-md w-full bg-white shadow-2xl rounded-2xl border border-gray-200 overflow-hidden mx-auto transition-all duration-300">
+        <div class="bg-customGreen-900 p-8 text-center text-white">
+            <h1 class="text-3xl font-extrabold flex items-center justify-center gap-2 tracking-wide">
+                ⚡ EEU Portal Login
+            </h1>
+            <p class="text-customGreen-200 text-lg font-semibold mt-2">የኢትዮጵያ ኤሌክትሪክ አገልግሎት</p>
+        </div>
+        
+        <!-- Credentials Banner -->
+        <div class="bg-customGreen-50 border-b border-customGreen-100 p-4 text-center">
+            <p class="text-xs sm:text-sm font-semibold text-customGreen-900">
+                Demo Username: <code class="bg-customGreen-200 px-1.5 py-0.5 rounded font-mono font-bold">Co.center</code> | 
+                Password: <code class="bg-customGreen-200 px-1.5 py-0.5 rounded font-mono font-bold">Eeu@7</code>
+            </p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="p-8 space-y-6" novalidate>
+            <!-- Username Input -->
+            <div>
+                <label for="usernameInput" class="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
+                    Username / የተጠቃሚ ስም
+                </label>
+                <input 
+                    type="text" 
+                    id="usernameInput" 
+                    name="username" 
+                    autocomplete="username"
+                    required 
+                    placeholder="Enter username..." 
+                    class="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-customGreen-300 focus:border-customGreen-600 text-base font-semibold text-gray-900 transition"
+                >
+            </div>
+
+            <!-- Password Input -->
+            <div>
+                <label for="passwordInput" class="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
+                    Password / የይለፍ ቃል
+                </label>
+                <div class="relative">
+                    <input 
+                        type="password" 
+                        id="passwordInput" 
+                        name="password" 
+                        autocomplete="current-password"
+                        required 
+                        placeholder="••••••••" 
+                        class="w-full p-4 pr-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-customGreen-300 focus:border-customGreen-600 text-base font-semibold text-gray-900 transition"
+                    >
+                    <button 
+                        type="button" 
+                        onclick="togglePasswordVisibility()" 
+                        class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label="Toggle password visibility"
+                    >
+                        <svg id="eyeIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Remember Me Checkbox -->
+            <div class="flex items-center justify-between">
+                <label class="flex items-center gap-3 cursor-pointer select-none">
+                    <input 
+                        type="checkbox" 
+                        id="rememberMeCheckbox" 
+                        class="w-5 h-5 text-customGreen-600 border-gray-300 focus:ring-customGreen-500 rounded cursor-pointer accent-customGreen-600"
+                    >
+                    <span class="text-sm font-bold text-gray-700">Remember Me / አስታውሰኝ</span>
+                </label>
+            </div>
+
+            <!-- Dynamic Error Banner -->
+            <div id="loginError" class="hidden p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm text-center font-bold" aria-live="polite"></div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="loginBtn"
+                class="w-full bg-customGreen-600 hover:bg-customGreen-700 active:bg-customGreen-800 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg tracking-wide flex justify-center items-center gap-2 disabled:opacity-50"
+            >
+                <span id="btnText">ግባ (Login)</span>
+                <span id="btnSpinner" class="hidden animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+            </button>
+        </form>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboardScreen" class="max-w-7xl w-full bg-white shadow-2xl rounded-2xl border border-gray-200 overflow-hidden hidden">
+        <!-- Dashboard Header -->
+        <div class="bg-customGreen-950 p-5 sm:p-7 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-customGreen-900">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold flex items-center gap-2 tracking-wide text-amber-400">
+                    ⚡ EEU Feeder & Location Portal
+                </h1>
+                <p class="text-customGreen-200 text-sm sm:text-base font-medium mt-1">የፊደር፣ የቦታ ፣ የዋና መ/ቤት እና የቅርንጫፍ ስልክ መረጃ ሙሉ መፈለጊያ</p>
+            </div>
+            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white text-sm px-5 py-2.5 rounded-xl transition font-bold shadow-md flex items-center gap-2 self-end sm:self-auto">
+                <span>🚪</span> ውጣ (Logout)
+            </button>
+        </div>
+
+        <!-- Main Dashboard Navigation & Body Layout -->
+        <div class="flex flex-col md:flex-row min-h-[650px]">
+            <!-- Sidebar -->
+            <div class="bg-customGreen-950 w-full md:w-80 shrink-0 p-4 flex flex-col space-y-2.5 border-r border-customGreen-900">
+                           <!-- Nav Item 1: SMS Generator (Moved to 1st Position) -->
+                <button id="tab6Btn" onclick="switchTab('smsTab')" class="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-base text-amber-400 bg-emerald-900/80 border border-white/30 shadow-inner transition group text-left">
+                    <span class="text-xl">💬</span>
+                    <span>
+  1. SMS Generator (Complain & Token)<br>
+
+          1.Amh...<br>
+          2.Afaan.o...<br>
+          3.Tig...<br>
+          4.Eng...
+</span>
+</button>
+
+                <!-- Nav Item 2: Feeder Code -->
+                <button id="tab1Btn" onclick="switchTab('feederTab')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-customGreen-950 hover:bg-customGreen-900/50 border border-white/20 hover:border-white/50 transition text-left">
+                    <span class="text-xl">🔍</span>
+                    <span>2. Feeder Code with cover place</span>
+                </button>
+
+                <!-- Nav Item 3: Find DUMMY by Place -->
+                <button id="tab2Btn" onclick="switchTab('placeTab')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-customGreen-950 hover:bg-customGreen-900/50 border border-white/20 hover:border-white/50 transition text-left">
+                    <span class="text-xl">📍</span>
+                    <span>3. Find DUMMY by Place</span>
+                </button>
+
+                <!-- Nav Item 4: Find CENTER by RSG -->
+                <button id="tab3Btn" onclick="switchTab('rsgTab')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-customGreen-950 hover:bg-customGreen-900/50 border border-white/20 hover:border-white/50 transition text-left">
+                    <span class="text-xl">🏢</span>
+                    <span>4. Find CENTER by RSG</span>
+                </button>
+
+                <!-- Section Divider -->
+                <div class="pt-3 pb-1 px-2">
+                    <span class="text-[11px] font-extrabold tracking-widest text-amber-400/90 uppercase">DIRECTORIES & CONTACTS</span>
+                </div>
+
+                <!-- Nav Item 5: Directory -->
+                <button id="tab4Btn" onclick="switchTab('directoryTab')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-customGreen-950 hover:bg-customGreen-900/50 border border-white/20 hover:border-white/50 transition text-left">
+                    <span class="text-xl">📞</span>
+                    <span>5. #CONTACT NO. FOR HEAD office, branch & Directory</span>
+                </button>
+
+                <!-- Section Divider -->
+                <div class="pt-3 pb-1 px-2">
+                    <span class="text-[11px] font-extrabold tracking-widest text-amber-400/90 uppercase">SYSTEM SHORTCUTS & TOOLS</span>
+                </div>
+
+                <!-- Nav Item 6: Quick Links -->
+                <button id="tab5Btn" onclick="switchTab('linksTab')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-customGreen-950 hover:bg-customGreen-900/50 border border-white/20 hover:border-white/50 transition text-left">
+                    <span class="text-xl">🔗</span>
+                    <span>6. Quick Links (አስፈላጊ አገናኞች)</span>
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-4 sm:p-8 flex-1 bg-white overflow-x-hidden">
+                
+                <!-- SECTION 1: SMS GENERATOR & CUSTOM INFORMATION SUBMISSION -->
+                <div id="smsTab" class="space-y-6">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-4">
+                        <div>
+                            <h2 id="smsMainTitle" class="text-2xl font-bold text-gray-900 mb-1">SMS Generator (Separated)</h2>
+                            <p id="smsMainSubtitle" class="text-gray-600 text-sm sm:text-base">የአቤቱታ ቁጥር እና የቶከን ቁጥር SMS ማዘጋጃዎች</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                            <!-- Toggle Sub-Section Buttons (Custom Blue Theme) -->
+                            <div class="flex items-center gap-2 mb-4">
+    <button id="otherInfoBtn" onclick="switchSubSection('otherInfo')" class="bg-customBlue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">
+        1. Other Information
+    </button>
+
+    <!-- Tab Button targeting savedInfoSubSection -->
+    <button id="savedInfoBtn" onclick="switchSubSection('savedInfo')" class="relative bg-white text-customBlue-800 border border-customBlue-400 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2">
+        <span>📂 2. Saved Info (<span id="savedTotalInline">0</span>)</span>
+
+        <!-- Red Notification Badge -->
+        <span id="savedCountBadge" class="hidden absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center shadow-md animate-pulse">
+            0
+        </span>
+    </button>
+</div>
+
+                            
+                        </div>
+                    </div>
+
+                    <!-- SUB-SECTION 1: OTHER INFORMATION (BLUE THEMED PANEL + GREEN SMS GENERATORS) -->
+                    <div id="otherInfoSubSection" class="space-y-6">
+                        <!-- Custom Data Submission Panel (CUSTOM BLUE THEME) -->
+                        <div class="bg-customBlue-50/80 border-2 border-customBlue-300 rounded-2xl p-5 shadow-sm">
+                            <h3 class="text-lg font-bold text-customBlue-950 mb-3 flex items-center gap-2">
+                                📌 1. Add Other Information / ተጨማሪ መረጃ ማስገቢያ
+                            </h3>
+                            <form id="otherInfoForm" onsubmit="handleSaveInfo(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Title / Title Code:</label>
+                                    <input type="text" id="infoTitle" required placeholder="e.g. Feeder Outage, Note..." class="w-full p-2.5 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Category / Type:</label>
+                                    <input type="text" id="infoCategory" required placeholder="e.g. Technical, Billing..." class="w-full p-2.5 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Details / Description:</label>
+                                    <input type="text" id="infoDetails" required placeholder="Enter details to be stored..." class="w-full p-2.5 border-2 border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-customBlue-500 focus:outline-none">
+                                </div>
+                                <div class="sm:col-span-3 flex justify-end">
+                                    <button type="submit" class="bg-customBlue-600 hover:bg-customBlue-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm shadow-md transition flex items-center gap-2">
+                                        💾 Save Information to No. 2
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Form Control Actions Bar -->
+                        <div class="flex flex-wrap gap-3">
+                            <button id="fillSampleBtn" onclick="fillSampleSms()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition flex items-center gap-2">
+                                🎲 Fill Sample Data
+                            </button>
+                            <button id="resetFormBtn" onclick="resetSmsForm()" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition flex items-center gap-2">
+                                🧹 Reset Both Form Inputs
+                            </button>
+<!-- Language Switcher -->
+                            <select id="smsLang" onchange="handleLanguageChange()" class="p-2.5 border-2 border-gray-300 rounded-xl font-bold text-gray-800 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-customBlue-500 text-xs sm:text-sm">
+                                <option value="am">አማርኛ (Amharic)</option>
+                                <option value="om">Afaan Oromoo</option>
+                                <option value="ti">ትግርኛ (Tigrinya)</option>
+                                <option value="en">English</option>
+                            </select>                        </div>
+
+                        <!-- SMS Generators Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- COMPLAIN SMS BOX (GREEN THEME) -->
+                            <div class="bg-customGreen-50/60 p-6 rounded-2xl border-2 border-customGreen-300 space-y-4 flex flex-col justify-between shadow-sm">
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center border-b border-customGreen-200 pb-2">
+                                        <h3 id="complainTitle" class="text-lg font-bold text-customGreen-950 flex items-center gap-2">
+                                            📌 Complain SMS Generator
+                                        </h3>
+                                        <span id="complainCounter" class="text-xs font-bold text-gray-500">0 / 10 digits</span>
+                                    </div>
+                                    <div>
+                                        <label id="complainLabel" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                            Complain No / የአቤቱታ ቁጥር:
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="complainInput" 
+                                            maxlength="10" 
+                                            placeholder="e.g. 8011223344" 
+                                            class="w-full p-3.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-customGreen-300 focus:border-customGreen-600 text-lg font-mono font-bold text-gray-900 bg-white"
+                                            oninput="handleComplainInput(this)"
+                                        />
+                                        <p id="complainError" class="text-xs text-red-600 font-bold mt-1 hidden">❌ Complain No must be exactly 10 digits</p>
+                                    </div>
+                                    <!-- Live Preview Display -->
+                                    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span id="complainPreviewHeader" class="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider">Complain Live Preview</span>
+                                            <span id="complainStatus" class="px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full">Incomplete</span>
+                                        </div>
+                                        <div id="complainSmsOutputText" class="font-mono text-xs sm:text-sm text-customGreen-300 leading-relaxed min-h-[90px] whitespace-pre-wrap break-all">-- Complain SMS will appear here --</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    id="copyComplainBtn" 
+                                    onclick="copyComplainSms()" 
+                                    disabled 
+                                    class="w-full bg-customGreen-600 hover:bg-customGreen-500 disabled:bg-gray-400 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-base shadow-md disabled:cursor-not-allowed opacity-50 disabled:opacity-50 mt-4"
+                                >
+                                    📋 Copy Complain SMS
+                                </button>
+                            </div>
+
+                            <!-- TOKEN SMS BOX (GREEN THEME) -->
+                            <div class="bg-emerald-50/60 p-6 rounded-2xl border-2 border-emerald-300 space-y-4 flex flex-col justify-between shadow-sm">
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center border-b border-emerald-200 pb-2">
+                                        <h3 id="tokenTitle" class="text-lg font-bold text-emerald-950 flex items-center gap-2">
+                                            🔑 Token SMS Generator
+                                        </h3>
+                                        <span id="tokenCounter" class="text-xs font-bold text-gray-500">0 / 20 digits</span>
+                                    </div>
+                                    <div>
+                                        <label id="tokenLabel" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                            Token No / የቶከን ቁጥር:
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="tokenInput" 
+                                            maxlength="26" 
+                                            placeholder="e.g. 00112233445566778899" 
+                                            class="w-full p-3.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:border-emerald-600 text-lg font-mono font-bold text-gray-900 bg-white"
+                                            oninput="handleTokenInput(this)"
+                                        />
+                                        <p id="tokenError" class="text-xs text-red-600 font-bold mt-1 hidden">❌ Token No must be exactly 20 digits</p>
+                                    </div>
+                                    <!-- Live Preview Display -->
+                                    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span id="tokenPreviewHeader" class="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider">Token Live Preview</span>
+                                            <span id="tokenStatus" class="px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full">Incomplete</span>
+                                        </div>
+                                        <div id="tokenSmsOutputText" class="font-mono text-xs sm:text-sm text-customGreen-300 leading-relaxed min-h-[90px] whitespace-pre-wrap break-all">-- Token SMS will appear here --</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    id="copyTokenBtn" 
+                                    onclick="copyTokenSms()" 
+                                    disabled 
+                                    class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-400 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-base shadow-md disabled:cursor-not-allowed opacity-50 disabled:opacity-50 mt-4"
+                                >
+                                    📋 Copy Token SMS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-SECTION 2: SAVED INFORMATION DISPLAY TABLE -->
+                    <div id="savedInfoSubSection" class="space-y-4 hidden">
+                        <div class="bg-white border-2 border-customGreen-300 rounded-2xl p-6 shadow-sm">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                                <h3 class="text-lg font-bold text-customGreen-950 flex items-center gap-2">
+                                    📂 2. Saved Information Records / የተመዘገቡ መረጃዎች
+                                </h3>
+                                <input type="text" id="savedSearchInput" oninput="renderSavedInfoTable()" placeholder="Search saved info..." class="p-2.5 border-2 border-gray-300 rounded-xl text-sm font-semibold w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-customGreen-500">
+                            </div>
+
+                            <div class="table-container">
+                                <table class="w-full border-collapse">
+                                    <thead>
+                                        <tr class="bg-customGreen-800 text-white text-xs uppercase tracking-wider font-extrabold">
+                                            <th class="p-3 text-left">#</th>
+                                            <th class="p-3 text-left">Title / Code</th>
+                                            <th class="p-3 text-left">Category</th>
+                                            <th class="p-3 text-left">Details</th>
+                                            <th class="p-3 text-left">Saved Time</th>
+                                            <th class="p-3 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="savedInfoTableBody" class="text-sm divide-y divide-gray-200 bg-white font-medium">
+                                        <!-- Entries rendered via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- SECTION 2: SEARCH BY FEEDER CODE -->
+                <div id="feederTab" class="space-y-6 hidden">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Feeder Code Lookup & Copy</h2>
+                            <span id="recordCount" class="text-base font-semibold text-gray-600">Loading records...</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <input 
+                            type="text" 
+                            id="feederInput" 
+                            placeholder="Type feeder code only (e.g. LIKE SEB-I-01 OR SEBI01 ADC-15 OR ADC15)..." 
+                            class="w-full p-4 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-emerald-300 text-lg font-bold text-gray-900 shadow-sm"
+                            onkeyup="filterFeederTable()"
+                        />
+                    </div>
+
+                    <!-- Quick Examples -->
+                    <div>
+                        <span class="text-base text-gray-700 block mb-2 font-bold">ምሳሌዎች (ክሊክ ያድርጉ):</span>
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="quickSelect('ADC-04')" class="px-3.5 py-2 bg-gray-100 hover:bg-emerald-100 text-emerald-900 text-base font-mono font-bold rounded-xl border border-gray-300 shadow-sm">ADC-04</button>
+                            <button onclick="quickSelect('ADE-05')" class="px-3.5 py-2 bg-gray-100 hover:bg-emerald-100 text-emerald-900 text-base font-mono font-bold rounded-xl border border-gray-300 shadow-sm">ADE-05</button>
+                            <button onclick="quickSelect('SUL-01')" class="px-3.5 py-2 bg-gray-100 hover:bg-emerald-100 text-emerald-900 text-base font-mono font-bold rounded-xl border border-gray-300 shadow-sm">SUL-01</button>
+                        </div>
+                    </div>
+<!-- Toast Alert for Copy -->
+                    <div id="copyToast" class="hidden fixed bottom-6 right-6 bg-emerald-800 text-white px-6 py-3 rounded-xl shadow-2xl font-bold text-base transition-all z-50 flex items-center gap-2">
+                        ✅ Copied cleanly for Excel!
+                    </div>
+                    <!-- Table Container -->
+                    <div class="table-container mt-4">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-emerald-600 text-white text-base uppercase tracking-wider font-extrabold">
+                                    <th class="p-4 text-left w-1/4">Feeder Code</th>
+                                    <th class="p-4 text-left w-2/4">Covered Areas & Landmarks</th>
+                                    <th class="p-4 text-center w-1/4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="text-lg divide-y divide-gray-200 bg-white font-medium">
+                                <!-- Populated via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: FIND FEEDER BY PLACE -->
+                <div id="placeTab" class="space-y-6 hidden">
+                    <div>
+                        <label class="block base font-bold text-gray-900 uppercase tracking-wider mb-3">
+                            Type Place Name / የቦታውን ወይም የሰፈሩን ስም ያስገቡ (በአማርኛ ወይም በEnglish):
+                        </label>
+                        <input 
+                            type="text" 
+                            id="placeInput" 
+                            placeholder="e.g. Lideta, ጀሞ, ቃሊቲ, ገርጂ, 22, Meksico..." 
+                            class="w-full p-4 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-emerald-300 text-lg font-bold text-gray-900 shadow-sm"
+                            oninput="searchFeedersByPlace()"
+                        />
+                    </div>
+                    <div class="mt-4">
+                        <div id="placeResultSummary" class="text-base font-bold text-gray-700 uppercase tracking-wider mb-3">
+                            Matched Feeders / የተገኙ ፊደሮች:
+                        </div>
+                        <div id="placeResultsContainer" class="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+                            <div class="p-6 bg-gray-50 border border-gray-200 rounded-2xl text-lg text-gray-500 text-center font-bold">
+                                የቦታ ወይም የሰፈር ስም ከላይ ያስገቡ...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: FIND CENTER BY RSG -->
+                <div id="rsgTab" class="space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <label class="block text-base font-bold text-gray-900 uppercase tracking-wider">
+                            Find Center by RSG / በ RSG ማዕከል ፈልግ:
+                        </label>
+                        <input 
+                            type="text" 
+                            id="rsgSearchInput" 
+                            placeholder="Search RSG code (e.g. AC01)..." 
+                            class="p-3.5 border-2 border-gray-300 rounded-xl text-base w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                            oninput="filterRsgCenter()"
+                        />
+                    </div>
+                    <div id="rsgContainer" class="space-y-4 max-h-[480px] overflow-y-auto pr-2">
+                        <!-- Populated via Javascript -->
+                    </div>
+                </div>
+
+                <!-- SECTION 5: REGIONAL & DISTRICT CONTACT DIRECTORY -->
+                <div id="directoryTab" class="space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <label class="block text-base font-bold text-gray-900 uppercase tracking-wider">
+                            Regional Offices & Districts Contact Directory / የዋና መስሪያ ቤት ,የክልል እና ቅርንጫፍ መሥሪያ ቤቶች ስልክ ማውጫ:
+                        </label>
+                        <input 
+                            type="text" 
+                            id="dirSearchInput" 
+                            placeholder="ፈልግ (Search region/branch)..." 
+                            class="p-3.5 border-2 border-gray-300 rounded-xl text-base w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                            oninput="filterDirectory()"
+                        />
+                    </div>
+                    <div id="directoryContainer" class="space-y-6 max-h-[480px] overflow-y-auto pr-2">
+                        <!-- Populated via Javascript -->
+                    </div>
+                </div>
+
+                <!-- SECTION 6: QUICK LINKS -->
+                         <div id="linksTab" class="space-y-6 hidden">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">EEU System Links & Portals</h2>
+                    <p class="text-gray-600 text-base mb-6">አስፈላጊ የሥራ ማስኬጃ አገናኞች (Quick system shortcuts and links)</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Link 1 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-emerald-100 text-emerald-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">AICC Portal</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">AICC Service Cloud</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">https://10.100.25.215:28090/service-cloud/portal.html</p>
+                        </div>
+                        <a href="https://10.100.25.215:28090/service-cloud/portal.html" target="_blank" class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            🌐 Open AICC Link
+                        </a>
+                    </div>
+
+                    <!-- Link 2 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-blue-100 text-blue-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">CRM System</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">SAP CRM UI</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">http://apcrmdbprod.ethiopianelectricutility.et:8001/sap/bc/bsp/sap/crm_ui_start/default.htm?sap-client=100&sap-sessioncmd=open</p>
+                        </div>
+                        <a href="http://apcrmdbprod.ethiopianelectricutility.et:8001/sap/bc/bsp/sap/crm_ui_start/default.htm?sap-client=100&sap-sessioncmd=open" target="_blank" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            🌐 Open CRM Link
+                        </a>
+                    </div>
+
+                    <!-- Link 3 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-amber-100 text-amber-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Google Form</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Process Complete Form</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">https://docs.google.com/forms/d/e/1FAIpQLSc5xwaBukPMMR-6ufXzZNQ3LBZC6S2ASVtmDnYH4BtEXC0HKQ/viewform</p>
+                        </div>
+                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSc5xwaBukPMMR-6ufXzZNQ3LBZC6S2ASVtmDnYH4BtEXC0HKQ/viewform
+" target="_blank" class="inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            📝 Open Form
+                        </a>
+                    </div>
+
+                    <!-- Link 4 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-purple-100 text-purple-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Smart Meter</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Smart Meter General Portal</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">http://10.100.22.30:8080/general/</p>
+                        </div>
+                        <a href="http://10.100.22.30:8080/general/" target="_blank" class="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            ⚡ Open Smart Meter
+                        </a>
+                    </div>
+
+                    <!-- Link 5 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Google Form</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Collector Form</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">https://docs.google.com/forms/d/e/1FAIpQLSFXrpDCEBfP4W6I7mEpaKe6cVRG88m01VWhBIIP9T86PTAnNQ/viewform</p>
+                        </div>
+                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfXrpDCEBfP4W6I7mEpaKe6cVRG88m01VWhBIIP9T86PTaNnQ/viewform
+" target="_blank" class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            📋 Open Collector Form
+                        </a>
+                    </div>
+
+                    <!-- Link 6 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-teal-100 text-teal-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Google Spreadsheet</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Finder Sheet</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">https://docs.google.com/spreadsheets/d/1XrRnNqc4BKVrzXp7Ok8kbKiwwsgNn_Xebrq9DfiatfU/edit?pli=1&gid=1585916316#gid=1585916316</p>
+                        </div>
+                        <a href="https://docs.google.com/spreadsheets/d/1XrRnNqc4BKVrzXp7Ok8kbKiwwsgNn_Xebrq9DFiatfU/edit?pli=1&gid=1897060172#gid=1897060172
+" target="_blank" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            📊 Open Finder Sheet
+                        </a>
+                    </div>
+
+                    <!-- Link 7 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between md:col-span-2">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-rose-100 text-rose-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Portal / Form</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Totally & Prepaid Link</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">https://forms.gle/xnqLw9Bx4yW6s1zx8</p>
+                        </div>
+                        <a href="https://forms.gle/xnqLw9Bx4yW6s1zx8" target="_blank" class="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            🔗 Open Totally & Prepaid
+                        </a>
+</div>
+
+ <!-- Link 8 -->
+                    <div class="p-5 bg-white border-2 border-emerald-100 hover:border-emerald-500 rounded-2xl shadow-sm transition flex flex-col justify-between md:col-span-2">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-rose-100 text-rose-900 font-extrabold text-xs rounded-lg uppercase tracking-wider mb-2">Portal / Form</span>
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">Interruption Portal link</h3>
+                            <p class="text-xs text-gray-500 font-mono break-all mb-4">http://172.16.7.7:2000/interruptions</p>
+                        </div>
+                        <a href="http://172.16.7.7:2000/interruptions" target="_blank" class="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                            🔗 Interruption Portal
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <script>
+        // FULL COMBINED FEEDER DATASET
+        const feederDataArray = [
+            { code:  "ADC04(ADC-04)",  area:  "ሜክሲኮ ደብረወርቅ ሕንጻ፣ ለገሐር ጀርባ ፣ ለገሐር አሸዋ ተራ ፣ ኤግዝቢሽን ሴንተር፣ ፍላሚንጎ፣ኦሎምፒያ ፣ ደንበል፣ ደንበል ጀርባ፣ ፐርፕል ካፌ ፣ ቦሌ ማተሚያ ቤት ፤ ወሎ ሰፈር በከፊል"   },
+{ code:  "ADC05(ADC-05)",  area:  "ገነት ሆቴል፣ ቡልጋሪያ አካባቢ ፤ ቄራ ፤ ኦሮሚያ ሳርቤት ቢሮ እና አካባቢው"   },
+{ code:  "ADC08(ADC-08)",  area:  "አዲስ አበባ ዮኒቨርስቲ ኮሜርስ ፤ አርቴፊሻል ኢንተለጀንስ ፤ Ai ኢንተለጀንስ ; ብሔራዊ ባንክ ዋናው መስሪያ ቤት ፤ ኢትዮጵያ ሆቴል ፤ ብሔራዊ ቴያትር ፤ ብሔራዊ ቤተመንግስት ፤ የውጭ ጉዳይ ሚኒስትር ፤ ሳይንስ ሙዚየም ፤ ወዳጅነት ፓርክ ፤ ሸራትን ሆቴል ፤ ሂልተን ሆቴል ፤ ኢሲኤ ፤"   },
+{ code:  "ADC11(ADC-11)",  area:  "አፍሪካ ሕብረት ፣ መቻሬ ኮንዶሚኒየም፤ ልደታ ጸበል አካባቢ ፤ ሜክሲኮ በከፊል፤ ትንባሆ ሞኖፖል፤ ሳር ቤት ቴሌ"   },
+{ code:  "ADC15(ADC-15)",  area:  "ለገሐር፣ ቤተዛታ ሆስፒታል፣ ኦሮሚያ ባሕል ማዕከልጀርባ ፣ ጊዮን ሆቴል፣ እስጢፋኖስ ድልድይ አካባቢ፣ እስጢፋኖስ ቤተክርስቲያን ፤ ካሳንቺስ ግራንድ ፓላስ ሆቴል አካባቢ"   },
+{ code:  "ADE01(ADE-01)",  area:  "ድንበሯ ሆፒታል ፤ ሱመያ መስኪድ ፤ መገናኛ ፤ ሻላ ገበያ ፤ ሚካኤል ፤ ሾላ ሚካኤል ፤ ለም ሆቴል"   },
+{ code:  "ADE02(ADE-02)",  area:  "ሰብስቴሽን ጀርባ ፤ ይታለም ወፍጮ ፤ አክሱም ሆቴል ፤ ሆሊደይ ሆቴል ፤ ሳባ ሆቴል ፤ ፕላዛ ፤ ካፒታል ሆቴል ፤ ቺቺኒያ፤ አዲስ አለማየሁ ት/ቤት ፤ ጌታሁን በሻህ ህንጻ ጀርባ ፤ አዲስ ህይወት ሆስፒታል ፤ ዮሐንስ ክትፎ ቤት"   },
+{ code:  "ADE03(ADE-03)",  area:  "ጎላሎል ህንጻ ፤ ፋንዲሻ ሆቴል ፤ ቅዱስ ገብርኤል ሆስፒታል ፤ ወርቁ ህንጻ ፤ ቃል ፔኒሲሆን ፤ ዮናስ ጨርጨር ስጋ ቤት ፤ ቦሌ ክፍለ ከተማ ብልጽግና ጽፈት ቤት ፤ ሻላ መናፈሻ ፤ ለማ ስጋ ቤት ፤ ቺቺንያ ጫፍ ድረስ"   },
+{ code:  "ADE05(ADE-05)",  area:  "ጋቦን ኢንባሲ ፤ 24 ስፖርት ኮሚሽን ፤አደይ አበባ ስታዲየም ፤ 24 ኮንዶሚኒየም ፤ጨጨሆ የባህል አዳራሽ ፤ መሶብ ፤ ቦሌ መድሀኒአለም ፤ ቦሌ 2ተኛ ደረጃ ትምህርት ቤት ፤ ሬድዋን ህንጻ ፤ ሞኪንኮ ጀርባ ፤ ሰላም ህንጻ ፤ ኦሮሚያ ታወር ፤ ዮጎ ቸርች ፤ ቀነኒሳ ሆቴል ፤ ብርሀነ አደሬ ህንጻ ፤ አርመን ሆቴል ፤ ሞሞና ሆቴል ፤ ካሌብ ሆቴል ፤ መድሀኒአለም ታወር ፤"   },
+{ code:  "ADE08(ADE-08)",  area:  "አዋሬ ፤ ህንድ ኢንባሲ ፤ ቤተ መንግስት አካባቢ ፤ ቀበና መድሀኒያለም አካባቢ ፤ ቀበና ፤ ሚኒሊክ ሆስፒታል ፤ ስንፎርድ ት/ቤት"   },
+{ code:  "ADE09(ADE-09)",  area:  "ሻላ መናፈሻ ፣ ቺቺኒያ አካባቢ ፤ አትላስ ትራፊክ መብራቱ ጋር ፤ ቦሌ ቴሌ በስተቀኝ ፤ ቦሌ ቴሌ በስተ ግራ ፤ ደሳለኝ ሆቴል ፤ ጭሩ መድሀኒያለም ስጋ ቤት ፤ ማዶ ሆቴል ፤ ቦሌ 19 መናፈሻ ፤ ቦሌ ሩዋንዳ"   },
+{ code:  "ADE10(ADE-10)",  area:  "ሴቶች አደባባይ ፤ አድዋ ኮንዶሚኒየም ፤ ብርሀን እና ሰላም ማተሚያ ፊት ለፊት ፤ የካ ወረዳ 6 ፤ እንደራሴ ኮንዶሚኒየም ፤ ብርሀን ጎ ት/ቤት ፤ መለስ ፋውንዴሽን ፤ ጨርጨር ስጋ ቤት ፤ ዳሽን ተራራ"   },
+{ code:  "ADE11(ADE-11)",  area:  "ለመንገድ መብራት ፤ ወሎ ሰፈር ፤ ኡራኤል ፤ አዋሬ ቤተ መንግስት"   },
+{ code:  "ADE12(ADE-12)",  area:  "22 ሰብስቴሽን ፤ ሴቶች አደባባይ አዋሬ አደባብይ ፤ አዋሬ ኮንዶሚንየም ፤ ቤተ መንግስት ፤ ፓርላማ ፤ ወዳጅነት ፓርክ" },
+{ code:  "ADG03(ADG-03)",  area:  "ቀጨኔ 1ኛ ፤ 2 ኛ ፤ 3ኛ መንገድ ፤ ላዛሪስት ትምህርት ቤት ፤ እንጦቶ ፓርክ ፤ ስፔስ ሳይንስ ድረስ"   },
+{ code:  "ADG04(ADG-04)",  area:  "እግዚአብሔር አብ ቤተክርስቲያን ፤ ቀጨኔ መቀጠያ ፤ ሽሮ ሜዳ ፤ ጉስቋም ቤተክርስቲያን ድረስ"   },
+{ code: "ADN01(ADN-01)",  area: "መነን ፤ 6ኪሎ ዪኒቨርስቲ ፤ አሜሪካ ኢንባሲ ያሉ ቤቶች ፤ ስፔን ኢንባሲ ፤ ሽሮ ሜዳ ኪዳነ ምህረት ድረስ ለመንገድ መብራት ፤ ወሎ ሰፈር ፤ ኡራኤል ፤ አዋሬ ቤተ መንግስት" },
+{ code:  "ADN04(ADN-04)",  area:  "አፍንጮ በር ፤ ደጃች ውቤ ፤ ፒያሳ ጊዮርጊስ ቤተክርስቲያን ፤ የድሮ መብራት ሀይል ህንጻ ፊት ለፊት ያሉ ቤቶች ፤ ፒያሳ መዘጋጃ ፤ እሳት አደጋ ፤ አራዳ ፓርክ : ዳትሰን ሰፈር ፤ 3ኛ ፖሊስ ጣቢ፣ አዲስ አበባ ሜዲካል ኮሌጅ"   },
+{ code:  "ADN06(ADN-06)",  area:  "ሀግቤስ አራት መንታ፣ ጎጃም በረንዳ ጫፍ ፣ ጅንአድ፣ አበበች ጎበና ፣ ቄጤማ ተራ፣ ፓስተር አደባባይ፤ ጳውሎስ ሆስፒታል፣ አቤት ሆስፒታል፣ ቅዱስ ዮሐንስ ቤ/ክ፣"   },
+{ code:  "ADW01(ADW-01)",  area:  "ፈጥኖ ደራሽ፣ ኮልፌ ኮምርሄንሲቭ ት/ቤት፣ ዱ ሆቴል፣ ታይዋን ገበያ ፣ ኢትዮ ጠቢብ ሆስፒታል ፣"   },
+{ code:  "ADW02(ADW-02)",  area:  "እህል በረንዳ ፣ አውቶብስ ተራ፣ አዲስ ከተማ ት/ቤት፣ ገነሜ ት/ቤት፣ አማኔኤል ቤ/ክ ፊትለፊት፣ አዲሱ ሚካኤል አካባቢ"   },
+{ code:  "ADW03(ADW-03)",  area:  "ማሰለሚያ ፤ ሻንቅላ ወንዝ ፤ ኳስ ሜዳ ፤ አበበ ቢቂላ ስታዲየም ፤ ጋሽ መጋል፤ ግሩም ሆስፒታል አካባቢ ፤ ታይዋን"   },
+{ code:  "ADW04(ADW-04)",  area:  "አማኑኤል ሆስፒታል ፊት ለፊት ፤ ወደ ሰባተኛ ፤ ድሬ ህንጻ ፊት ለፊት ፤ ኮልፌ 18 ጤና ጣቢያው፤ ኮልፌ 18 ድልድዩ ድረስ"   },
+{ code:  "ADW05(ADW-05)",  area:  "18 ማደያው ጋር ፤ ፈጥኖ ደራሽ ፤ ኮልፌ ኮምርሄንሲቭ ት/ቤት እና አካባቢው"   },
+{ code:  "ADW06(ADW-06)",  area:  "ኮልፌ መናፈሻ ፤ ፊሊፖስ ፤ ኮልፌ ጤና ጣቢያ በከፊል ፤ ሎሚ ሜዳ ፤ ኢንዱስሪ መንደር ፤ አዲስ ዌስት ሰብስቴሽን አካባቢው"   },
+{ code:  "ADW08(ADW-08)",  area:  "ቀራንዮ መድህንዓለም ቤ/ክ ፣ ቤተል ሆስፒታል፣ ቤተል ቢጫ ፎቅ ፤ መስኪድ ፤ ቤተል ፓስታ ቤት አካባቢ ፤ ኮልፌ ወ.8 ፅፈት ቤት እና አካባቢው"   },
+{ code:  "ADW11(ADW-11)",  area:  "ሆላንድ ኢባሲ አካባቢ ፤ የሺ ደበሌ፤ ጦርሀይሎች ሙሉ ወንጌል ቤተክርስቲያን አካባቢ ፤ ቻይና ኢንባሲ አካባቢ ፤ አጉስታ ጽዮን ማርያም ቤተክርስቲያን አካባቢ ፤ አባ ጅፋር መስኪድ በከፊል፤"   },
+{ code:  "ADW12(ADW-12)",  area:  "አውጉስታ፣ ወይራ ሰፈር፣ ወይራ ኮንዶሚኒየም፣ ሞቢል ፣ ራሺያ ካምፕ የነበረው ፣ ተዘንአ ሆስፒታል ፣ ሙስና ሰፈር ፤ ጦርሀይሎች ጎልፍ ክለብ"   },
+{ code:  "AKAI1(AKA.I-1)",  area:  "ደቡብ አዲስ አበባ ቁ.8 አገልግሎት መስጫ አካባቢ ( አቃቂ ገበያ ጋር ) ፤ አቃቂ ንግድ ባንክ ፤ አቃቂ ወረዳ 3 ጽፈት ቤት ጋር ፤ተኩሼ እንጨት መሸጫ"   },
+{ code:  "AKAI2(AKA.I-2)",  area:  "አቃቂ መድሀኒያለም አካባቢ ፤ ወረዳ 01 ጽፈት ቤት ፤ ሚሺን ት/ቤት ፤ አቃቂ ጤና ጣቢያ ፤ ቤጂንግ ሆስፒታል ፤ ቃጫ ፋብሪካ"   },
+{ code:  "AKAI3(AKA.I-3)",  area:  "አለምባንክ ፤ ኢንዲያና ት/ቤት አካባቢ ፤ ታፍ ማደያ ፤ አቃቂ ብሩህ ተስፋ ት/ቤት ፤ ኮፊ ሲቲ ድረስ"   },
+{ code:  "AKAI4(AKA.I-4)",  area:  "አቃቂ ብረታ ብረት"   },
+{ code:  "ALB10(ALB-10)",  area:  "ዓለም ባንክ ፤ ስልጤ ሰፈር ፤ እስከ ፋንኤል ኮንዶሚየም"   },
+{ code:  "ALB8(ALB-8)",  area:  "ቤተል አካባቢው በከፊል ፤"   },
+{ code:  "ANF03(ANF-03)",  area:  "አንፎ ጣቢያ አካባቢ ፤ ስልጤ ሰፈር አለምባንክ ፤ ግራር ጤና ጣቢያ ድረስ, ዓለምባንክ ወርቁ ሰፈር፣ አሊ መስጂድ፣ አልፋ ትምህርት ቤት፣ ዓለምባንክ አደባባይ፣"   },
+{ code:  "ANF06(ANF-06)",  area:  "ፊሊ ዶሮ ፤ አንፎ ዘቢደር ፤ 105 መንደር ፤ አንፎ ወይብላ ማርያም ፤ ጸበል ማዶ ፤ ሱማሌ መንደር ፤ አለምባንክ ተሻግሮ ፤ ኡራኤል ጀርባ ፤ ቀርሳ ፤ ደንበል አካባቢ ፤ አርሴማ ፤ ተክለሀይማኖት አካባቢ ፤ ጸበል ማዶ ፤ ፖሊስ ጣቢያ ጀርባ ፤ ሀጫሉ ጤና ጣቢያ አካባቢ ፤"   },
+{ code:  "ANF1(ANF-1)",  area:  "አለም ባንክ በከፊል ፤ አልፋ ት/ቤት በሙሉ እስከ ስላሴ ቤተክርስቲያን ድረስ"   },
+{ code:  "ARB1(ARB-1)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "ARB11(ARB-11)",  area:  "አይ ሲ ቲ ( ዳታ ማይኒንግ )"   },
+{ code:  "ARB12(ARB-12)",  area:  "በሻሌ ኮንዶሚኒየም & አራብሳ ኮንዶሚኒየም በከፊል"   },
+{ code:  "ARB13(ARB-13)",  area:  "አራብሳ ኮንዶሚየም በከፊል"   },
+{ code:  "ARB14(ARB-14)",  area:  "አዲስ አበባ ዉሀ ብቻ ፤ ( ፍሬ ጎዩ ፤ ለገዳዲ ግድብ ፡ 44 ፤ ለገበሪ ፤ ዳቤ ጎርጊስ ፤ ጮሌ ፤ ቆንጦባ ፤ ሌንጫ ፤ ጨፌ ዶንሳ መሄጃ )"   },
+{ code:  "ARB15(ARB-15)",  area:  "አራብሳ የአዲስ አበባ ከተማ መስተዳደር እንጀራ ማምረቻ ፋብሪካ"   },
+{ code:  "ARB21(ARB-21)",  area:  "ሰሚት እሳት አደጋ ፤ ሰሚት ኮንዶሚየም በከፊል ፤ ሰሚት 72 ካሬ በታች በኩል ፤ በሻሌ ፓሊስ ጣቢያ ፤ ቡና በርድ ፤ አያት ዞን 2 መኖሪያቤት ፤ ሰሚት ፊየል ቤት ፤ ሰሚት ኪዳነ ምህረት እና አካባቢው"   },
+{ code:  "ARB22(ARB-22)",  area:  "ሰሚት ለስላሳ ፋብሪካ ጀርባ ያሉ ኮንዶሚየም ቤቶች ፤ ለስላሳ ፋብሪካ ፤ ሎውኮስት መኖሪያ መንደር ፤ ሬፍት ቫሊ ዩኒቨርስቲ ፤ ዋሽንግተን ሰፈር ፤ ወጂ ፤ አትሌት መንደር ፤ ቴሌ ማህበር ፤ ብርሀን ሆቴል እናአካባቢው ፤ ሰሚት ጎርጊስ ፤ ሰንራይዝ ሪል ስቴት ፤ ኖህ ሪል ስቴት"   },
+{ code:  "ARB23(ARB-23)",  area:  "አራብሳ አዲሱ ኮንዶሚን የም በከፊል ፤ ውሃ ማጣሪያ ታንከር ፤ ገላን በከፊል"   },
+{ code:  "ARB24(ARB-24)",  area:  "አራብሳ ኮንዶሚየም በከፊል ፤ ኢትዮ ቻይና ፤ የአስተማሪዎች መኖሪያ ቤት ፤ ገብርኤል ቤተክርስቲያን ፤ ለሚኩራ ወረዳ05 ፤ አራብሳ ፓሊስ ጣቢያ ፤ አቦ ቤተክርስቲያን እና አካባቢው ፤ የውሃ ማጣሪያ ታንከር ፤ ለ ቴሌ ታወር"   },
+{ code:  "ARB25(ARB-25)",  area:  "ዲያስፓራ ሰፈር እና አካባቢው ፤ ቃጽላ ማርያም እናአካባቢው ፤ ውሃ ታንከር ጋር ያለው 40/60 በከፊል ፤ 20/80 ኮንዶሚኒየም በከፊል"   },
+{ code:  "ARB5(ARB-5)",  area:  "አይ ሲ ቲ ፓርክ"   },
+{ code:  "ARB9(ARB-9)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "AYT5(AYT-5)",  area:  "መሪ ህዳሴ ት/ቤት ፤ መንገሻ ከብት እርባታ እና አካባቢው ፤ መሪ መስኪድ ፤ ተ/ብርሃን አንባዬ ኮንስትራክሽን ፤ ስኩል ኦፍ ቱሞሮ ፤ ፀሀይ ሪል ስቴት ፤ አይ ሲ ኤም ሲ ሆስፒታል ፤ አሉላ ሪል ስቴት እና አካባቢው ፤ ጊፍት ሪል ስቴት ፤ መሪ ስላሴ"   },
+{ code:  "AYT7(AYT-7)",  area:  "ለኮንቬንሽ ሴንተር ዴዲኬትድ መስመር"   },
+{ code:  "AYT8(AYT-8)",  area:  "መሪ ፋኑኤል ቤተክርስቲያን እስከ ካራ መድሀኒያለም ጀርባ ፤ አያት ዞን 1 መሮርያ ቤት ፤ አያት ዞን 2 በከፊል ፤ መሪ ሉቄ 40/60 ፤ መሪ ጉሊት ፤ ህዳሴ 1ኛ ደረጃ ት/ቤት ፤ ሙያ እና ቴክኒክ ፤ ጎላሎል ሪል ስቴት ፤ ሰሚት 72 ካሬ በላይኛው በኩል"   },
+{ code:  "BEL01(BEL-01)",  area:  "ቤላ ሰብስቴሽን ጀርባ ያሉ ቤቶች ፤ ቤላ አቦ ቤተክርስቲያን ፤ ፈረንሳይ ጉራራ ቤተክርስቲያን ድረስ"   },
+{ code:  "BEL03(BEL-03)",  area:  "ቤላ ሰብስቴሽን ፊት ለፊት ፤ ጣሊያን ኢምባሲ ፤ ጀርመን ኢንባሲ ፤ ሚኒሊክ ሆስፒታል ፤ 6 ኪሎ ፤ ያሬድ ሙዚቃ ቤት ፤ 5ኪሎ ዩኒቨርስቲ ፤ ግ ንፍሌ ፤ 4ኪሎ ዪኒቨርስቲ ፤ ቅድስት ስላሴ ቤተክርስቲያን ድረስ"   },
+{ code:  "BEL04(BEL-04)",  area:  "ፈረንሳይ ኤንባሲ ፤ ፈረንሳይ ጉራራ ፤ ፈረንሳይ ኢየሱስ ቤተክርስቲያን አካባቢ ፤ አካኮ ገብርኤል መውጫ አካባቢ ፤ አካኮ ገብርኤል መንደሮች"   },
+{ code:  "BEL05(BEL-05)",  area:  "ግብፅ ኤምባሲ፣ 6 ኪሎ ዩኒቨርስቲ፣ የካቲት 12 ሆስፒታል፣ ኤፍቢ ግቢ፣ ናይጄሪያ ኤምባሲ፣ 20 ቀበሌ ፤ አፍንጮ በር ፤ቀጨኔ ጉቶ ሜዳ ፤ ቤላ ኮሪያ ሰፈር ( ቤላ 05 ) ፤ ጃንሜዳ ፤ ጃንሜዳ መከላከያ"   },
+{ code:  "BEL06(BEL-06)",  area:  "አሜሪካ ኤምባሲ"   },
+{ code:  "BLL01(BLL-01)",  area:  "አብነት ፤ ኮካ ፤ ተ/ኃይማኖት ፤ ጭድ ተራ ፤ ፔፕሲ ፋብሪካ ፤ ሰባተኛ በከፊል፤መርካቶ አካባቢው በሙሉ"   },
+{ code:  "BLL02(BLL-02)",  area:  "አንዋር መስኪድ ፤ ተ/ክለ ሀይማኖት ፤ ሀብተ ጎርጊስ ድልድይ ፤ ሰባራ ባቡር ፤ ሸዋ ሱፐር ማርኬት ፤ ኤሊያና ሆቴል ፤ ጨው በረንዳ ፤ አዲስ ከተማ ቴሌ ፤ ገዳ ባንክ ፤ ጣሊያን ሰፈር ፤ የድሮ አተክልት ተራ"   },
+{ code:  "BLL03(BLL-03)",  area:  "ጥቁር አንበሳ ሆስፒታል ሙሉ እስከ ተክለሀይማኖት ፓርክ ድረስ ፤ 40/60 ሰንጋ ተራ ኮንዶሚኒየም ፤ 5ተኛ እስከ ጌጃ ድረስ ፤ ብሔራርዊ"   },
+{ code:  "BLL04(BLL-04)",  area:  "ኮካ አደባባይ ፤ ገዳመ ኢየሱስ ፤ ቶታል ፤ ሰባተኛ"   },
+{ code:  "BLL06(BLL-06)",  area:  "ልደታ ፤ ቢሊሞ ሜዳ ፤ ሜክሲኮ ፌደራል ፖሊስ ድረስ ፤ ጦርሀይሎች ምድር ሀይል ጊቢ ፤ ልደታ ፍርድ ቤት"   },
+{ code:  "BLL10(BLL-10)",  area:  "ባሻወልዴ ኮንዶሚኒየም ፤ አራዳ ፓርክ ፊት ለፊት ፤ ብርሀን እና ሰላም ማተሚያ ፤ ቅድስተ ማርያም ፤ ቱሪስት ሆቴል አካባቢ ፤ ኤፍሬም ውስኪ ቤት አካባቢ ኢኖቬሽን ሚኒስተር አካባቢ ፤ ወዳጅነት ፓርክ ፤ ሸራትን አንባሳደር ፤ ዘውዲቱ ሆስፒታል ፤ ጋንዲ ሆስፒታል ፤ ኮሜርስ ፤ ለገሀር ድረስ"   },
+{ code:  "BLL11(BLL-11)",  area:  "ጨርቆስ ማንዴላ ፤ ታቦት ማደሪያ፤ አዳምስ ሆቴል ጀርባ ፤ ሲሳይ ሚዳ፣ ጨርቆስ ቤተክርስቲያን አካባቢ ሙሉውን፣ ሜክሲኮ፣ ገነት ሆቴል፣ ቂርቆስ፣ ድድ ማስጫ፣ አዲስ ሴንተር ሰብስቴሽን ፊትለፊት አንስቶ፣ በኬኬር፣ ላምሮት ሆቴል፣ ኮካ ማከፋፈያ፣ ፖፖላሬ መከላከያ ካምፕ፣ ቅዱስ ቂርቆስ ቤተክርስቲያን፣ በአዲሱ መንገድ በአልጋ ተራ እስከ ጨነቀ ሱቅ ፣ ማንዴላ ስቴሽኑ ያለበት፣ አስታራ፣ ጣሊያን ዳቦ አካባቢ፣ ጨርቆስ ቴሌ ዳታ ሴንተር ድረስ።"   },
+{ code:  "BLL12(BLL-12)",  area:  "ተግባረድ ፤ ሜክሲኮ ፤ ቢጂ ኤ አካባቢ ሙሉ ፤ አብደላ ህንጻ በሙሉ ፤ ብቅል ተራ ድረስ"   },
+{ code:  "BLL14(BLL-14)",  area:  "ፒያሣ፤ ቸርቸል ጎዳና ፤ጎላ ሚካኤል፤ ተክለሃይማኖት ሆስፒታል፣ ዋቢ ሽበሌ ፤ ጥቁር አንበሳ ፡ ቴዎድሮስ አደባባይ፡ ካቴድራል ፡ አድዋ ሙዚየም : ተክለሃይማኖትAround Piassa EEU Head Office, Tayitu Hotel"   },
+{ code:  "BLM01(BLM-01)",  area:  "ወይን አንባ ማርያም ፤ ውሃ እና ፍሳሽ ማጣሪያ ፤ በሻሌ ፤ ሽቦ ኦጄርሳ ት/ቤት እና አካባቢው ፤ ጎሮ ስላሴ ኮንዶሚን የም እና አካባቢው ፤ ጎሮ ሰፈራ ፤ በከፊል ፤ ጨላ ፈታ መንደር ፤ አይ ሲቲ ፓርክ ፤ ዶክተር ክሬቼር ፤ ኒው ኮማንድ ኮንስትራክሽን ፤ ፍልውሃ ፤ አሰር ሪል ስቴት ጠጠር ማምረቻ ፤"   },
+{ code:  "BLM02(BLM-02)",  area:  "ኢንዱስትሪ ፓርክ አቦ ቤተክርስቲ ያን እና አካባቢው ፤ ዮሀንስ ክሬቸር እና አካባቢው ፤ አራብሳ ውሃ ታንከር ፤ ሳይት 4 ፣ 40/60( አያት ጨፌ ሳይት 4፥ 40/60 ) መኖሪያ ፤ ሳይት 3 ሎሚ ከለር በከፊል ፤ አየር መንገድ ማህበር በከፊል ፤ አየር መንገድ ማህበር በከፊል ፤ ቦሌ ክፍለ ከተማ ወረዳ 10 ት/ቤት ፤ ለገጣፎ ቴሌ ታወር ( ክሬቸር )"   },
+{ code:  "BLM03(BLM-03)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "BLM05(BLM-05)",  area:  "ቦሌ ወረዳ 11 (ሽቦ ጀርታ ሰፈር ( 3ተኛ በር ፊት ለፊት ) በከፊል ፤ ሰሚት ኮንዶሚኒየም ፤ ሰሚት የመከላከያ ፋውንዴሽን ፤"   },
+{ code:  "BLM07/33(BLM-07/33)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "CHK1(CHK-1)",  area:  "አዲሱ ቤተመንግስት ፤ ልደታ ቤተክርስቲያን ፤ ራሽያ ኢንባሲ እና አካባቢው ፤ እንግሊዝ ኢንባሲ ፤ ኬንያ ኢንባሲ ፤ ሚናሮል ህንጻ ፤ ሰላም ታዎር ፤ ቹቹ ሜዳ ፤ ሾላ ጤና ጣቢያ ፤ሾላ በግ ተራ ፤ የካ ሚካኤል ጀርባ ፤ ደረጄ ጋራጅ ፤"   },
+{ code:  "CHK2(CHK-2)",  area:  "ቤተመንግስት ጊቢ ውስጥ ሙሉ"   },
+{ code:  "CHK3(CHK-3)",  area:  "ቤተ መንግስት ጊቡ ውስጥ በከፊል ፤ ተክለ ሀይማኖት ቤተክርስቲያን ፤ አርሴማ ቤተክርስቲያን ፤ ወሎ ሰፈር ፤ ፈረንሳይ ዳንሴ ፤ ሚካኤል ፤ ጨለለቆ ፤ አንቆርጫ ገብርኤል ፤ አንቆርጫ እና አካባቢው ፤ የካ ወረዳ 10። ሚኒልየም 2ተኛ ደረጃ ት/ቤት ፤ የካ ወረዳ 10 ጤና ጣቢያ ፤ አማኑኤል ቤተክርስቲያን ፤ ወታደር ሰፈር ፤ እስከ ኪዳነ ምህረት ቤተክርስቲያን በላይኛው በር .፤ ፈረንሳይ ጉራራ ቤተክርስቲያን ጋር"   },
+{ code:  "COT01(COT -01)",  area:  "ኮተቤ ኮሌጅ ፤ መሳለሚያ ፤ ኮተቤ አማኑኤል ሆስፒታል ፤ ዘርፌ ቦኖ ፤ ፍናን ዶቦ ፤ ቀርሳ ሚካኤል ፤"   },
+{ code:  "COT03(COT -03)",  area:  "ጉርድ ሾላ ቴሌ ፤ የካ ሞሰብ ፤ ትምህርት መሳሪያዎች ፤ እስከ ጃክሮስ አደባባይ ፤ ሜታ ቢራ ፋብሪካ"   },
+{ code:  "COT04(COT -04)",  area:  "ሲኤም ሲ ልዩ ቤቶች ፤ ጨርጨር ስጋ ቤት ፤ ጽጌ ሽሮ ፤"   },
+{ code:  "COT05(COT -05)",  area:  "ኮተቤ ኪዳነ ምህረት ፤ ዲፋሬ ሰፈር ፤ አራራት ሆቴል ፤ ሀይሌ ሪዞርት ሆቴል ፤ እስራኤል ኢምባሲ ፤ የካ ክፍለ ከተማ ድረስ"   },
+{ code:  "COT06(COT -06)",  area:  "ሲቪል ሰርቪስ ፤ አየር መንገድ ቤቶች ፤ አሞራው ክሊኒክ ፤ ፊጋ ፤ ኖህ ሪል ስቴት"   },
+{ code:  "COT07(COT -07)",  area:  "ኮተቤ ደህንነት ማሰልጠኛ ፤ ንብ እርባታ ፤ ኮተቤ ሀና ማርያም ፤ ፈረንጇ ቤት"   },
+{ code:  "COT08(COT -08)",  area:  "ወሰን ፤ ወንዲራድ ት/ቤት ፤ 02 ጤና ጣቢያ ፤ በሬ ለልማት ፤ ምስራቅ ቁጥር 06 ማዕከል እና አካባቢው"   },
+{ code:  "COT09(COT -09)",  area:  "ሳሊተ ምህረት ፤ ጆርጅ ዘይት ፤ ቁጥር 05 ማዕከል ፤ ዝጎራ ሆቴል እና አነስተኛ እና ጥቃቅን"   },
+{ code:  "COT10(COT -10)",  area:  "ሲቪል ሰርቪስ በከፊል ፤ የኢትዮጲያ ኤሌክትሪ አገልግሎት ቻርች መሞያው (EEU EV CHARGE STATION ) ሲኤም ሲ ሚካኤል ፤ አዲስ ኢንተርናሽናል ኮንቬሽን ሴንተር ፤ ባድሜ ሰፈር ፤ ሰንሻይን መኖሪያ ቤት ፤ ቴዲ አፍሮ ሰፈር"   },
+{ code:  "COT02(COT-02)",  area:  "የኢትዪጵያ ኤሌትሪክ ሀይል ዋና መስሪያ ቤት ፤ ኢትዮ ቻይና ኮሌጅ ፤ ክህሎት ሚኒስቴር"   },
+{ code:  "COTK2(COT-K2)",  area:  "የኢትዮጲያ ኤሌትሪክ ጋራጅ አካባቢ ፤ ማዕድን ሚኒስቴር ፤ ላም በረት መናሀሪያ"   },
+{ code:  "GEF05(GEF-05)",  area:  "ቶፕ ውሃ"   },
+{ code:  "GEF06(GEF-06)",  area:  "ቡራዩ ወደ ፤ መልካ ገልባ ፤ ሙገር መኖሪያ ፤ ኢራን ጋዝ"   },
+{ code:  "GEF09(GEF-09)",  area:  "ለሙገር ሲሚንቶ ፋብሪካ"   },
+{ code:  "GEF10(GEF-10)",  area:  "ቶፕ ውሃ"   },
+{ code:  "GEF11(GEF-11)",  area:  "ታጠቅ ኢንዱስትሪ ፤"   },
+{ code:  "GEF12(GEF-12)",  area:  "ታጠቅ ኢንዱስትሪ ፤"   },
+{ code:  "GEF13(GEF-13)",  area:  "ቡራዩ መልካ ገርባ ፤ቀቼ ፤ 02 ፣ ታጠቅ ዲያስፖራ መንደር ፤ አሸዋ ሜዳ ኮንዶሚኒየም ፤ ታጠቅ ኢንዱስትሪ"   },
+{ code:  "GEF14(GEF-14)",  area:  "ቡራዩ ማርያም በከፊል ፤ አሸዋ ሜዳ ፤ ሻንጎታ ፤ ቁሳዬ ፤ ወረገኑ መንደር ፤ ቀበሌ ገብር ኤል ሰፈር ፤ nh ሳይት ፤ ወሃ ታንከር ሰፈር ፤ ሰፈራ"   },
+{ code:  "GEF15(GEF-15)",  area:  "ቡራዩ ማዘጋጃ ፤ ቡራዩ ካርቶን ሰፈር ፤ ቡራዩ በግ ተራ ፤ ሰራ ጽዮን ፤ ቄራ ፤ ሸክላ ሰፈር ፤"   },
+{ code:  "GEF16(GEF-16)",  area:  "ለ ክብሮም ሜታል ኢንዱስትሪ"   },
+{ code:  "GEF18(GEF-18)",  area:  "ቡራዩ ፤ አኔ ዲማ ፤ ወጣቢቺ ፤ ጉዱ ፤ ሀሙስ ገበያ"   },
+{ code:  "GEF19(GEF-19)",  area:  "ቡራዩ መስጊድ አካባቢ ፣ ሪፍት ቫሊ ዩኒቨርሲቲ አካባቢ፣ ፀርሐ ፅዮን ቤ/ክ አካባቢ፣ ቡራዩ ወለጋ ሰፈር ፤ ከታ"   },
+{ code:  "GEF20(GEF-20)",  area:  "ድሬ ከአስፋልት በታች፣ ጉዳ፣ ኬላ፣ ጉዮ፣ ታጠቅ ኢንዱስትሪ መንደር በከፊል ፣ቶልቻ ፤ ሰሪፊ ፤ ጉጄ ፤ ቶልቻ ፤ ታጠቅ ኢንዱስትሪ ፤ ፌስቱላ ማዕከል እና አካባቢው"   },
+{ code:  "GEF21(GEF-21)",  area:  "AGM አዳማ ብረታ ብረት"   },
+{ code:  "GEL01(GEL-01)",  area:  "ከሰብስቴሽን ፣ ባቡር ሐዲድ፣ ሲዳሞ አዋሽ፣ ገንደ ቆሬ፣ ገላን መኖሪያ ቤቶች፣ ገመዳ ማህበር"   },
+{ code:  "GEL02(GEL-02)",  area:  "ሰብስቴሽን ጀርባ ፡"   },
+{ code:  "GEL03(GEL-03)",  area:  "አቃቂ ኬላ፣ ገላን ኢንዱስትሪ መንደር ሙሉ፣ ወሰርቢ"   },
+{ code:  "GEL04(GEL-04)",  area:  "ቱሉ ዲምቱ ማህበር ቤት፤ ቱሉ ዲምቱ ኮንዶሚየም ( ፕሮጀት 11 እና ፕሮጀክት 12) ፤ ኦልድ ሲቲ ( ቦስተር )"   },
+{ code:  "GEL05(GEL-05)",  area:  "በላይነህ ክንዴ፣ በስተቀኝ ያሉ ኢንዱስትሪዎች በሙሉ፣ ካፍ ማደያ አካባቢ"   },
+{ code:  "GEL06(GEL-06)",  area:  "አዲስ አበባ ውሃ ፤ አባ ሳሙኤል መንደር ፤"   },
+{ code:  "GEL06(GEL-06)",  area:  "የውሃ ጉድጓድ"   },
+{ code:  "GEL07(GEL-07)",  area:  "አርዲ ብረታ ብረት"   },
+{ code:  "GEL08(GEL-08)",  area:  "ዱከም ከተማ ፤ ፕሪማ ፓስታ"   },
+{ code:  "GEL09(GEL-09)",  area:  "ገላን ማዘጋጃ ቤት ፣ ገላን ከተማ ፣ ፒኤልሲ፣ ነጮ ፣ ኖክ ማደያ ፤ ክሬሸር ማዶ ፤ ሀይዌይ ተሻግሮ ለቴሌ የሚሰጥ"   },
+{ code:  "GEL10(GEL-10)",  area:  "አርዲ ብረታ ብረት"   },
+{ code:  "GEL33/3(GEL-33/3)",  area:  "ሰይድ ዳምጠው ፤ ፋብሪካ"   },
+{ code:  "GELk10(GEL-k 10)",  area:  "ባቡር ጣቢያ"   },
+{ code:  "GOF02(GOF-02)",  area:  "ጎፋ ገብርኤል ፤ ሶፊያ ሞል ፤ ጎፋ ገብርኤል አደባባይ ፤ ሶፊያ ሞል ፤ ቄራ ፤ ገብርኤል ታቦት ማደርያ ፤ አልማዝዬ ሜዳ ፤ ጎፋ መብራት ሀይል ኳስ መዳው ጋር ( ታክሲው ተራ ጋር )"   },
+{ code:  "GOF03(GOF-03)",  area:  "ጎፋ መከላከያ ካንምፕ ፤ አሚጎ ፤ ጀሞ ሚካኤል ፤ መካኒሳ አረቄ ፋብሪካ ፤ አንቦ አደባባይ ፤ መካኒሳ አንቦ ቤተክርስቲያን ድረስ ፤ ከፍያለው ህንጻ ፤ ከነማ መድሀኒት ቤት ድረስ እና አካባቢው"   },
+{ code:  "GOF04(GOF-04)",  area:  "ጎፋ ካንምፕ ፤ ሀዋርያው ቸርች ፤ ኪዳነምህረት ቤተ ክርስቲያን ፤ መካኒሳ አረቄ ፋብሪካ መብራት ፤ ቆሬ አደባባይ ፤ አሚጎ ኮንዶሚንየም በከፊል ፤ ፋና ት/ቤት ፤"   },
+{ code:  "GOF05(GOF-05)",  area:  "ጎፋ ኮንዶሚየም ፤ ጎፋ መከላከያ ኮንዶሚንየም ፤ ጀርመን አደባባይ ፤ ቻይና ሪልእስቴት ፤ ሮያል ሴራሚክ ፤ ትግሬ ሰፈር ፤ ባሌ ማህበር ፤ ዮቴክ ሪልእስቴት ፤ ፊውቸር ት/ቤት"   },
+{ code:  "GOF06(GOF-06)",  area:  "ላፍቶ በላይ ፤ ላፍቶ በታች ፤ ወረዳ 12 እና ጎርጊስ ቤተክርስቲያን ፤ ግ ንቦት 20 ት/ቤት ፤ 58 ጫፍ ታክሲ ተራው ድረስ ፤ ያሬድ ሜዳ"   },
+{ code:  "KALGIS03(KAL GIS-03)",  area:  "ዋሊያ ቆዳ ፤ ወረዳ 11 ፤ ሀይሌ ጋርመት ፤ አፍሪካ ሲዲሲ ፤ ማንጎ ሰፈር ፤ ፉሪ ኮንዶሚየም ፤ ዱላ ማርያም"   },
+{ code:  "KALGIS05(KAL GIS-05)",  area:  "ማሰልጠኛ ፤ ኦሮሚያ ስቲል ፓይፕ ፤ ሳሪስ አቦ ኮንዶሚየም ፤ ወርቁ ሰፈር ፤ ቡልቡላ ፤ ቡልቡላ ማርያም ሰፈር ፤ 93 ማዞሪያ ፤ ኦቪድ ሪል ስቴት ( ገላን ጉራ) ፤"   },
+{ code:  "KALGIS06(KAL GIS-06)",  area:  "አድማስ ዪኒቨርስቲ ፤ ቃሊቲ ፍሳሽ ማጣሪያ ፤ አርሴማ ቤተክርስቲያን ፤ ቃሊቲ 40/60 ኮንዶሚየም ፤ ቃሊቲ ገብርኤል ፤ ቃሊቲ ማረሚያ ፤"   },
+{ code:  "KALI12(KAL-I-12)",  area:  "ገላን ጉዳ(ኦሮሚያ ኮንዶሚኒየም) ፤ ባቡር ጣቢያው አካባቢ"   },
+{ code:  "KALIK12(KAL-I-K12)",  area:  "ለውሀ ኒው ሲቲ (ቦስተር ) ፤ ለውሀ ጉድጓድ ይሰጣል"   },
+{ code:  "KALIK13(KAL-I-K13)",  area:  "ገላን ጉዳ አካባቢ ፣ ኦሮሚያ ኮንዶሚኒየም"   },
+{ code:  "KALIK13(KAL-I-K13)",  area:  "ቃሊቲ ኢንዱስትሪ መንደር ፤ ቀርዳሼ ቡና ማበጠሪያ ፤ ጨሪ እና አካባቢው"   },
+{ code:  "KALIK2(KAL-I-K2)",  area:  "ገላን ኮንዶሚኒየም በከፊል( ልደታ ቤተ ክርስቲያን አካባቢ) ፤ አባ ሳሙኤል ማረሚያ ፤ አቃቂ ቴሌ ዌር ሀውስ አካባቢ ፤ አንበሳ ጫማ ፤ አለምባንክ ፤ ከተማ ልማት ፤ 06 ( ጋራዱ ጋር ) ፤ ፊታውራሪ ት/ቤት አካባቢ ፤ አባ ቦራ"   },
+{ code:  "KALIK3(KAL-I-K3)",  area:  "ገላን ኮንዶሚየም በከፊል ፤ ዘኒት ማህበር ቤት ፤ ገላን ማህበር ቤት ፤ ሳሎ አዲስ ሰፈር ፤"   },
+{ code:  "KALIK4(KAL-I-K4)",  area:  "ለ አዲስ በአበባ ውሃ ፤ ገበሬ ማህበር፣ ጅቡቲ ባቡር መንገድ፣ F4-ሳሎ ኢትዮቤቶን ብሎኬት አካባቢ፣ ሳሎ ማሕበር ቤቶች፣ ገላን ኮንዶሚኒየም፣ የማሕበር ቤቶችና ገላን ቁጥር-2 እና ቁጥር -3 ኮንዶሚኒየም"   },
+{ code:  "KALIK4(KAL-I-K4)",  area:  "ቃሊቲ ወሎ ሰፈር"   },
+{ code:  "KALIK5(KAL-I-K5)",  area:  "ሳሪስ ሀና ማሪያም በከፊል ፤ አተክልት ተራ ፤ ወደ ሀና ማሪያም ፤ የሺ ሽሮ ፤ ሀና ( የውሃ ቦስተርን )"   },
+{ code:  "KALII02(KAL-II-02)",  area:  "ነጋ ቦንገር ፤ ብሄረ ጽጌ ፤ 58 ፤ ስላሴ ቤተክርስቲያን ፤ ቻይና ጠጠር ፤ ቀይ አፈር ፤"   },
+{ code:  "KALII03(KAL-II-03)",  area:  "አዲስ ጎማ ፋብሪካ ፤ አዋሽ ቆዳ ፋብሪካ ፤ ሸራ ፋብሪካ"   },
+{ code:  "KALII04(KAL-II-04)",  area:  "ሳሪስ አቦ ፤ ቡልቡላ ፤ 93 ማዞሪያ ፤ፌደራል መከላከያ ካምንፕ፤ አየር መንገድ ድረስ"   },
+{ code:  "KALII05(KAL-II-05)",  area:  "ፋፋ ፋበሪካ ፣ አዋሽ ቆዳ ፣ ግብርና ሜካናይዝድ፣ አቦ ባሌስትራ ፋብሪካ ፣ ሳሪስ እሳት አደጋ እና አካባቢው ፣ ለውሃ ቡስተር GW2 ፣ ለ3f ፋብሪካ"   },
+{ code:  "KALII06(KAL-II-06)",  area:  "ጉሙሩክ ፤ ቅመማ ቅመም ፤ ነጋ ቦንገር ፤ አደይ አበባ በከፊል ፤ ሳሪስ አዲስ ሰፈር በከፊል ፤"   },
+{ code:  "KALNK10(KAL-N-K10)",  area:  "ጣና ቁፋሮ ( ጣና ድሪል )"   },
+{ code:  "KALNK2(KAL-N-K2)",  area:  "ፓርሞ ሳይት አካባቢ ኢንዱስትሪ መንደር ፤ ቼራሊያ ፊት ለፊት ፤ ቃሊቲ ገብር ኤል 40/60 ፊት ለፊት ፤ ቼራሊያ ኮንዶሚየም ፤ ቃሊቲ መናሃሪያ"   },
+{ code:  "KALNK4(KAL-N-K4)",  area:  "ቃሊቲ ማረሚያ፤ አብሲኒያ ጀርባ ፤አቃቂ/ቃሊቲ ክፍለ ከተማ ፊት ለፊት ፤ ፓፍ ደም ሲኒማ ፤ ሞኢንኮ ፤ ዱግዳ ኮንስትራክሽን ፤ ሰላም ህንጻ፤ ኪዳነ ምህረት ፤ ቃሊቲ 09 ፤ ቃሊቲ 08 ፤ ቃሊቲ መከላከያ ጊቢ ፤ አቃቂ ስታዲየም ፤ ዮሀንስ ሆቴል ፤ ብሔራው ት/ቤት እና ጀርባ ፤ ኬኬ ብርድ ልብስ ፋብሪካ"   },
+{ code:  "KALNK5(KAL-N-K5)",  area:  "ቂሊንጦ ኮንዶሚየም ፤ አዲስ አበባ ሳይንስ እና ቴክኖሎጂ ዮኒቨርስቲ ፤ ቂሊንጦ ላይ ሰፈር ፤ ቂሊንጦ ሚካኤል አክባቢ ፤ ሌስ ፍራንስ ት/ቤት ፤ ቤጂንግ ሆስፒታል ፤ አሳማ ጊቢ ፤ ኮዬ አደባባይ አካባቢ ፤ ዋሊያ ቢራ ፤"   },
+{ code:  "KALNK6(KAL-N-K6)",  area:  "አቃቂ / ቃሊቲ ክፍለ ከተማ ፤ ሴቶች ሊቀማዕከላት ፤ ጨፌ ኮንዶሚየም ፤ ሳፋሪ ኮም ፤ ሸገር ዳቦ ፤ ቃሊቲ ማረሚያ ፤ ሚድሮክ ፤ ማሩ ብረታ ብረት ፤ ቃሊቲ ውሃ ልማት አካባቢ በከፊል"   },
+{ code:  "KALNK7(KAL-N-K7)",  area:  "ሰርፂ ማርያም ፤ ሚካኤል ቤተክርስቲያን፤ ደራርቱ ት/ቤት ፤ ቁስቋም ማሪያም ፤ ናርዶስ ቡና ፤ አየር ሀይል ፤ አምባሰል አካባቢ ፤ 5000 ቤቶች ፤ ፕሬዝዳንት ዱቄት ፋብሪካ ፤ አዲስ አበባ መንገዶች ፤ አዲስ አበባ መንገዶች ጠጠር ማምረቻ ፤ አዲስ አበባ መንገዶች ፤ በርታ ሪል ስቴት ፤ ወርቁ ሰፈር መስኪድ ፤ ቃሊቲ ውሃ ልማት አካባቢ በከፊል"   },
+{ code:  "KALNK8(KAL-N-K8)",  area:  "ሲሳይ ብረታ ብረት ፤ ሀይሌ ማራቶን ኢንጂነሪንግ"   },
+{ code:  "KLN1(KLN-1)",  area:  "ቂሊንጦ ኢንዱስትሪ ፓርክ ፤ አየር ሀይል ጊቢ ውስጥ ( ኤር ፋርስ)"   },
+{ code:  "KLN2(KLN-2)",  area:  "ሲጋራ ፋብሪካ"   },
+{ code:  "KLN3(KLN-3)",  area:  "ዋሊያ ብራ ፋብሪካ ፤ ቂሊንጦ ኢንዱስትሪ ጀርባ ያለ ፋብሪካ"   },
+{ code:  "KLN4(KLN-4)",  area:  "የሴቶች ሊቀ ማዕከል (አዲስ አበባ ቴክኖሎጂ ኢንሲቲውት )"   },
+{ code:  "KLN5(KLN-5)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "KLN6(KLN-6)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "KLN7(KLN-7)",  area:  "ኢንዱስትሪ ፓርክ"   },
+{ code:  "KOY04(KOY-04)",  area:  "ኮዬ ፈጬ ኮንዶሚየም ፕሮጀት 16 በከፊል፤ፕሮጀት 17 በከፊል፤ ኮዬ ፈጬ ክፍለ ከተማ ( ረቢቻ ሆቴል ጀርባ ) ፤ የሶማሌ ተፈናቃይ ፤ ኮዬ አቦ ቤተክስቲያን ጋር ያሉ ልማት ተነሺዎች"   },
+{ code:  "KOY05(KOY-05)",  area:  "ኮዬ 05 ፕሮጀክት 16 በከፊል፣ ፕሮጀክት 12 በከፊል ፣ ፕሮጀክት 17 በከፊል"   },
+{ code:  "KOY06(KOY-06)",  area:  "ኮዬ ዩኒቨርስቲ ፤ ቡልቡላ በከፊል ፤ 40/60 ኮንዶሚየም ፤ 20/80 ኮንዶሚየም ፤ ቡልቡላ መድኃያለም ቤተክርስቲያን ፤ ገላን ጉራ አዲስ ኢንዱስትሪ መንደር ( ኦቪድ ፊት ለፊት ያለው ኢንዱስትሪ መንደር )"   },
+{ code:  "KOY07(KOY-07)",  area:  "ቂሊንጦ ኢንዱስትሪ ፓርክ ጀርባ ፤ እስከ ኦቪድ ድረስ ፤ አቃቂ ክ/ከተማ ወረዳ 10 ጀርባ ፤ ወረዳ 10 ጤና ጣቢያ ፤ ገላን ጉራ ፤ ለውሃ ጉድጓዶች ፤ ከ ሰብስቴሽን ጀርባ ያሉ መንደሮች"   },
+{ code:  "KOY47(KOY-47)",  area:  "ኮዬ ፕሮጀክት 18 በከፊል፤ ንፋስ ስልክ ፤ኮዬ ፈጬ ክፍለ ከተማ ፊት ለፊት ፤ ኮዬ ፈጬ እና ቱሉ ዲምቱ መሀል ያለው ሽንት ቤት ማጣሪያ ፤ ፋንታ አብዱል መር ወፍጮ ቤት አካባቢ ፤ ቱሉ ዲምቱ ፈጬ ማርያም አካባቢ ፤ ቱሉ ዲምቱ ኮንዶሚየም ጀርባ ይሉ ማህበር ቤቶች ፤ ቱሉ ዲምቱ ቴሌ ታወር ፤ እስከ ክፍያ ጣቢያው ድረስ ፤ ጥቃቅን እና አነስተኛ ሼዶች"   },
+{ code:  "KOY48(KOY-48)",  area:  "ኮዬ ፕሮጀክት 18 በከፊል ፤ ለውሃ ጉድጓድ"   },
+{ code:  "KOY50(KOY-50)",  area:  "ለውኃ ኮንዶሚኒየም"   },
+{ code:  "LEG01(LEG-01)",  area:  "ለገበሪ ፤ MNS አካባቢ ፤ ጂፕሰም ፋብሪካ"   },
+{ code:  "LEG02(LEG-02)",  area:  "ለገጣፎ ፤ ማሚቴ መንደር ፤ 500 መንደር ፤ ስታዲየም ጀርባ ፤ ወጣቶች አካባቢ ፤ 140 ፤ ለገዳዲ ፤ ለገበሪ ፤ 44 ማዞሪያ ፤ አበባ መንደር ፤ ድሬ ሸኮሩ ፤ ለገዳዲ ውሃ ማጣሪያ ፤"   },
+{ code:  "LEG03(LEG-03)",  area:  "አያት 49 ፤ ዶክተር አበበች ጎበና ሆስፕታል እና መቄዶንያ"   },
+{ code:  "LEG04(LEG-04)",  area:  "አያት 49 በከፊል ፤ አየር መንገድ መኖሪያ በቤት በከፊል ፤ ሆሴ ሪል ስቴት"   },
+{ code:  "LEG05(LEG-05)",  area:  "ጣፎ አያት ኮንዶሚንየም ፤ ሳራ አምፓል ፤ ኮተቤ ካራ ፤"   },
+{ code:  "LEG06(LEG-06)",  area:  "አያት ዞን 6 ፤ አያት ዞን 3 ፤ አያት ዞን 5 ፤ ኤል ቦተን ሪልስቴት ፤ ደራርቱ አደባባይ ፤ ብልጽግና ጽፈት ቤት ፤ ለሚ ኩራ ክፍለ ከተማ ጽፈት ቤት ፤ አያት5 ኮንዶሚየም ፤ ሰንሻይን ቤቶች ፤ ኖህ ሪል ስቴት ፤ ለቡ ሚካኤል ፤ ለሚ ኩራ መሶብ አገልግሎት"   },
+{ code:  "LEG07(LEG-07)",  area:  "መለኛው ግሮሰሪ ፤ ጣፎ ገብርኤል ፤ ገመናይ ማርያም"   },
+{ code:  "LEG08(LEG-08)",  area:  "ሰሚት 20 ሜትር ፤ የተባበሩት ነዳጅ ማደያ ጀርባ ፤ መሪ ሉቄ የገበያ ማዕከል፤ ሰሚት ፍየል ቤት ፊት ለፊት ያሉ አካባቢዎች"   },
+{ code:  "LEG09(LEG-09)",  area:  "MNS ፋብሪካ"   },
+{ code:  "LEG10(LEG-10)",  area:  "ለገጣፎ አደባባይ ፤ ገዋሳ ፤ ህሊና ፋብሪካ እና ኢንዱስትሪ መንደር ፤ ባጫ ሎጅ ፤ ክሬሽር ፤ ለገጣፎ ወጣቶች ድረስ ፤"   },
+{ code:  "LEG11(LEG-11)",  area:  "20ዎቹ ኮንዶሚየም ፣ አያት ዞን 8 ፤ አንባሳንደር ሪል ስቴት ፤ ኦቪድ ሪል ስቴት"   },
+{ code:  "LEG12(LEG-12)",  area:  "ለገጣፎ ፤ ሲሲዲ ፤ 140 መንደር ፤ መናሀሪያ ፤ ለገጣፎ ጤና ጣቢያ ፤ አቦ ቤተክርስቲያን መሄጃ ፤ ቄራ ፤"   },
+{ code:  "LEG13(LEG-13)",  area:  "ጥሩ መናፈሻ፣ አባዶ ኮንዶሚኒየም በከፊል"   },
+{ code:  "LEG14(LEG-14)",  area:  "ጣፎ የታችኛው ኮንዶሚየም ፤ አባዶ በከፊል"   },
+{ code:  "LEG15(LEG-15)",  area:  "ለብርሃን ዳቦ ቤት"   },
+{ code:  "LEG33(LEG-33)",  area:  "ለገጣፎ ፤ የካ ሰዲ ፤ የካ አባዶ ጀርባ ፤ 44 ማዞሪያ ፤ ፍሬ ጎዩ ፤ ሮጌ ፤ ድሬ ሶኮሩ ፤ ለገበሪ ፤ ግራር ገብር ኤል ፤ አዲስ አበባ ውሃ በከፊል ፤ ዳቢ ጎርጊስ ፤ ሰንዳፋ ሙሉ ከተማ ፤ ለገጣፎ ኢንዱስትሪ መንደር"   },
+{ code:  "MEK01(MEK-01)",  area:  "መካኒሳ ኢንዱስትሪ መንደር በከፊል ፤ ሀና ማርያም ፤ ሰፈራ ድረስ"   },
+{ code:  "MEK02(MEK-02)",  area:  "ለቡ ፤ ቻድ ኢንባሲ ፤ 72 መንደር በሙሉ ፤ ተክለ ሀይማኖት ቤተክርስቲያ ፤ ሁጃድ ቻይና ድርጅት ( ካምፕ) ፤ ጀሞ 3 ፤ ጀሞ ፌደራል ሆስፒታል ድረስ"   },
+{ code:  "MEK03(MEK-03)",  area:  "ለቡ መብራት ፤ ቫርኔሮ አደባባይ ፤ ለቡ መድሀኒያለም በቀኝ በኩል ፤ ለቡ ላቢያጆ ፤ ጀሞ 1 ፤ ካሳ ሳይት ፤ አፍሪካ ህንጻ ድረስ ፤ ጀሞ ሚካኤል ድረስ"   },
+{ code:  "MEK04(MEK-04)",  area:  "አርሴማ ቤተክርስቲያን ፤ ጀርመን አደባባይ ፤ ጀሞ ሚካኤል ፤ አፍሪካ ህንጻ ፤ ዱላ ማርያም ፤"   },
+{ code:  "MEK05(MEK-05)",  area:  "ጋርመንት ኢንዱስትሪ መንደር በከፊል ፤ ኦሮሚያም ኮንዶሚየም ፤ አዲስ አበባ ኮንዶሚየም ፤ አፍሪካ ሲዲሲ በከፊል ; ብረታ ብረት (sheger)"   },
+{ code:  "MEK06(MEK-06)",  area:  "ፉሪ ፤ ካፕታል ሲሚንቶ"   },
+{ code:  "MEK06(MEK-06)",  area:  "ለቡ መብራት ፤ ቫርኔሮ አደባባይ በግራ በኩል ፤ለቡ ሙዚቃ ሰፈር ፤ ትራኮን ሪልእስቴት ፤ ጋራ ማርት ፤ ጀሞ 1 ኮንዶሚየም በግራ በኩል ያሉ መኖሪያ ቤቶች ፤ ጀሞ 1 መብራት ፤ መስታውት ፋብሪካ ፤ ጀሞ 3 በከፊል ፤ ቡና ሜዳ ፤ አለምገና በከፊል"   },
+{ code:  "MEK07(MEK-07)",  area:  "ሁጃድ ፋብሪካ ፤"   },
+{ code:  "MEK8(MEK-8)",  area:  "ለቡ በከፊል ፤ላፍቶ በከፊል ፤ ላፍቶ መድሀኒአለም ፤ ላፍቶ ጊዮርጊስ በከፊል"   },
+{ code:  "NIF01(NIF-01)",  area:  "ጎተራ፤ ጎተራ ኮንዶሚኒየም በከፊል ፤ ጨርቆስ ቴሌ ጋር ፤ ጨርቆስ በከፊል ፤ ዕውቀት ፋና ት/ቤት"   },
+{ code:  "NIF03(NIF-03)",  area:  "ጎተራ ኮንዶሚኒየም ፣ወንጌላዊት ፣ ዩኒማክ፣ መስቀል ፍላውር ፣ ተሻላ ጋራዥ፣ ዳኞችና አቃቢ ሕግ ቢሮ ፣ ኮስሞስ ሕንፃ፣ ድሪም ላይነር ፤ ወንጌላዊት ፤ ጎተራ ፤ ዘንባባ ሆቴል ፤ ወንጌላዊት"   },
+{ code:  "NIF04(NIF-04)",  area:  "ሞጆ ዘይት ፋብሪካ ፤ የውሃ ጎስተርን GW3 ፤ ጎተራ ኢሚግሬሽን ፤ ጎተራ ውኃ"   },
+{ code:  "NIF06(NIF-06)",  area:  "ጎርጎርዮስ አደባባይ ፤ ሳውዲ ኢንባሲ፤ ወሎ ሰፈር ፤ ካራ ማራ ድልድይ ፤ ሩዋንዳ ኢንባሲ ፤ ቻይና ገበያ ፤ ጃፓን ኢንባሲ ፤ መስማት የተሳናቸው፤ ላሊበላ ሆቴል ፤ ጣና መኖሪያ ቤቶች ፤ ራማዳ ሆቴል ፤ ፋንቱ ሱፐር ማርኬት፤ መተባበር ፤ ወሎ ሰፈር ሙሉ ፤ ደህንነት አካባቢ"   },
+{ code:  "NIF07(NIF-07)",  area:  "ጎተራ ፤ ግሎባል ፤ ሪቼ ፤ጨርቆስ በከፊል ፤ ደንበል በከፊል ፤ ይመቸም ፊየል ቤት ፤"   },
+{ code:  "NIF08(NIF-08)",  area:  "ንፋስ ስልክ መከላከያ ፤ ፌደራል ፓሊስ ፤ ቡና ቦርድ ፤ ጎፋ መብራት ሀይል ስቶር ፤ ብሔረ ጽጌ ማርያም ቤተክርስቲያን በከፊል ፤ ካዲስኮ ቴሌ ፤ ንፋስ ስልክ ት/ቤት ፤ ሮቶ ፋብሪካ"   },
+{ code:  "NIF09(NIF-09)",  area:  "ዋሽንግተን ሆስፒታል ፤ ቦሌ ሚካኤል ኮንዶሚየም ፤ ቦሌ ሚካኤል ቤተ ክርስቲያን ፤ 3ኛ በር ፤ 4 ኛ በር ፤ 5 ኛ በር ፤ 6ኛ በር ፤ ናቲ ሆቴል ፤ ጎርጎሪዎስ ቤተ ክርስቲያን ፤ መልካ ወከና ማህበር ፤ ቡልቡላ ጎርጊስ ፤ ቡልቡላ ሰፈር በከፊል ፤ ሪሴንቲ ፤ሶማሌ ተፈናቃይ ሰፈር ፤ አየር መንገድ ራዳር ፤ ክሬቸር ድረስ"   },
+{ code:  "NIF10(NIF-10)",  area:  "ጎረራ በከፊል ፤ ሸገር ሲቲ ፤ ካዲስኮ ቀለም ፊት ለፊት ተሻግሮ ያሉ ( ባቡር ሀዲድ ተሻግሮ ) ዮሴፍ ቤተክርስቲያን እና አካባቢው ፤ ሳሪስ አዲስ ሰፈር በከፊል"   },
+{ code:  "SEBI01(SEB-I-01)",  area:  "ስልጤ ሰፈር መውጫ፣ ፋኑኤል ቤ/ክ ፤ አጃንባ ኮንዶሚየም ፤ ወታደር ሰፈር ( ጨፌ መስኪድ )"   },
+{ code:  "SEBI02(SEB-I-02)",  area:  "ፉሪ ፤ አለምገና ፤ ሰበታ ፤ዲማ ፤ ሜታ ፤ ክሬቸር ፤ ኪዳነ ምህረት ፤"   },
+{ code:  "SEBI03(SEB-I-03)",  area:  "አየር ጤና ፣ ሳሚ ካፈ ጀርባ ፣ ታቦት ማደሪያ፣ መሐንዲስ ሰፈር፣ ኤፌመ ሬዲዮ፣ የድሮ ቴሌ፣ ዘነበወርቅ ፤ ታቦት ማደሪያ፤ 72 ጤና ጣቢያ እስከ ጊዮርጊስ ቤተክርስቲያን ፣ቤተል ፖስታ ቤት ፣ ሰኔ 30፣ 80 ሰፈር ፣ ወይራ አልዩ መስኪድ አካባቢው"   },
+{ code:  "SEBI04(SEB-I-04)",  area:  "ካራ ፤ ናትራን ፤ ለማ ነጎ ት/ቤት ፤ አየር ጤና ፤ አየር ጤና ኪዳነምንረት ፤ አየር ጤና ሞቢል ፤ ፉሪ ፤ ሰይድ ያሲን ጀርባ ፤ ኡራኤል አካባቢ ፤"   },
+{ code:  "SEBI05(SEB-I-05)",  area:  "ፊሪ ፤ ኖክ ፤ ዋልያ ብረታ ብረት ፤ ካፒታል ሲሚንቶ ጀርባ"   },
+{ code:  "SEBI06(SEB-I-06)",  area:  "አየይካ አዲስ፣ ( ቡሉኮ )"   },
+{ code:  "SEBI07(SEB-I-07)",  area:  "ዓለም ገና ፣ ኢንዱስትሪ መንደር ፣ ፉሪ ሬዲዮ ጣቢያ ፣ፉሪ፣ ሃጂ ሪልስቴት አካባቢ፣ ወርዶፋ ሎጅ፣ ዳርፉር ሰፈር፣ ጀሞ 2"   },
+{ code:  "SEBI08(SEB-I-08)",  area:  "ካራ የካቲት 23 ሆቴል ፤ ሬዲዮ ፋና ውሃ ጋኑ ድረስ"   },
+{ code:  "SEBI09(SEB-I-09)",  area:  "ወለቴ ፡ ወለቴ ኢንዱስትሪ መንደር ፤ ኖክ ማደያ ፤ ባለወልድ አካባቢ"   },
+{ code:  "SEBI10(SEB-I-10)",  area:  "ግራር ኮንዶሚኒየም ፤ አለምባንክ በከፊል ፤ ትሮፒካል ፤ አየር ጤና ኪዳነ ምህረትድረስ"   },
+{ code:  "SEBI11(SEB-I-11)",  area:  "ካራ ሰብስቴሽን ፤ ሳህሌ ብረታ ብረት ፤ እስከ ጀሞ 1 መግቢያ ድረስ ፤ ጀሞ-2 ኮንዶሚኒየም ፣ የስ ውሃ ፣ዓለምገና ማርስ ብስኩት ፤ ዳለቲ"   },
+{ code:  "SEBI12(SEB-I-12)",  area:  "ካራቆ፣ ረጲ ት/ቤት ፣ወሌ ኮንዶሚኒየም፣ ወለቴ ማርያም መውጫ፣ ወለቴ ቶታል፣ ወለቴ ኖክ ድረስ ፤ ወጨጫ ማሪያም ፤ ወጨጫ ጎርጊስ ፤ካራ በከፊል ፤ አጃንባ ኮንዶሚየም ፤ ጥላሁን ከብት እርባታ ፤ እስከ ደግ ነት ኮንዶሚየም ፤ ኬላ ድረስ"   },
+{ code:  "SEBI13(SEB-I-13)",  area:  "ካራ መድሀኒአለም መውጫ ፤ ውሃ በላ ሱቅ ፤ ጀሞ 2 መግቢያ ፤ ጀሞ ኮንዶሚኒየም ፤ ፊሪ ፤ ፊሪ 20ሜትር ፤ ባቡር ጣቢያ ፤ ዳርፉር ፤ ዳርፉር መንደር ፤"   },
+{ code:  "SEBI15(SEB-I-15)",  area:  "መድሀኒያለም መውጫ ፤ ሬዲዮ ፋና በሙሉ ፤ ቻይና ካምፕ ፤ ዘነበ ወርቅ በሙሉ ፤ አየር ጤና ፤ ኤፍ ም ፤ ድረስ"   },
+{ code:  "SEBII1(SEB-II-1)",  area:  "BMT (ቢኤቲ ) ኬብል ማምረቻ ዴዲኬትድ"   },
+{ code:  "SEBII11(SEB-II-11)",  area:  "ወደ ጌጃ ሰብስቴሽን የሚሄድ ኤክስፕረስ መስመር"   },
+{ code:  "SEBII12(SEB-II-12)",  area:  "እቴቴ Dedicate"   },
+{ code:  "SEBII13(SEB-II-13)",  area:  "ዋን ውሃ ዴዲኬትድ ፣ (አባሃዋ ትሬዲንግ ዴዲኬትድ )"   },
+{ code:  "SEBII14(SEB-II-14)",  area:  "BGI ፋብሪካ"   },
+{ code:  "SEBII19(SEB-II-19)",  area:  "ለኬኬ ጁስ ፋብሪካ ዴዲኬትድ"   },
+{ code:  "SEBII2(SEB-II-2)",  area:  "አልሳም ፒኤልሲ"   },
+{ code:  "SEBII3(SEB-II-3)",  area:  "ኮካኮላ ፋብሪካ"   },
+{ code:  "SEBII5(SEB-II-5)",  area:  "ሰበታ ከተማ ፣ አቀበና ውሃ ማምረቻ ፣ ዲማ ሆስፒታል"   },
+{ code:  "SEBII6(SEB-II-6)",  area:  "ዲማ አካባቢ ያሉ ፋብሪካዎች ፣ ተፍኪ ተጂ ፤ በበላ ፤ ከለቻ ፤ ጎራርኪሶ ፤ ወሰቢ ፤ ዓርብ ገበያ ፤ አለምጎ ፤ ሂዲያያ ፤ አዋሽ በሎ"   },
+{ code:  "SEBII7(SEB-II-7)",  area:  "ሰብስቴሽኑ አካባቢ ፤ ሜታ አካባቢ ፤ ሰበታ ከተማ ፤ አለምገና ሚካኤል አካባቢ ፤ ገዳም ሰፈር ፤ ዳለቲ ኢንዱስትሪ ፤ ዳለቲ ቄራ ፤ ገዳምባ ፤ አለምገና ኢንዱስትሪ አካባቢ"   },
+{ code:  "SEBII8(SEB-II-8)",  area:  "ደመቀ እና ኩምቴክ ኢንዱስትሪ"   },
+{ code:  "SEBII9(SEB-II-9)",  area:  "አርባ ምንጭ ጨርቃ ጨርቅ"   },
+{ code:  "SHG01(SHG-01)",  area:  "አወልያ አካባቢ ፣ ካኦጄጄ፣ አበነሃብተማርያም ፣ አስኮ ጨረታ፣ 40/60 ኮንዶሚኒየም ፤ ብርጭቆ ቀይ መስቀል ጋር ፤ ብርጭቆ ማርያም ቤተክርስቲያን ፤ ካኦጄጄ ጀርባ አርሴማ ቤተክርስቲያን"   },
+{ code:  "SHG02(SHG-02)",  area:  "አስኮ 05 አካባቢ ( ሰብስቴሽኑ አካባቢ ) ቃሌ ተራራ ጋር ፤ እያሱ ምንጭ ፤ አስኮ መናሀሪያ፤ አስኮ መቃብር ፤ አቡዬ ድልድይ ( ግርማና ልጆቹ ) ፤ ብርጭቆ ኮንዶሚንየም"   },
+{ code:  "SHG04(SHG-04)",  area:  "አስኮ አዲስ ሰፈር ፤ መሰረት ደፋር ፤ ኦሮሚያ ሜዳ ፤ አዲስ አበባ ቆዳ ፤ መድሀኒያለም ቤተክርስቲያን ፤ መልካ በሮ 01 ቀበሌ"   },
+{ code:  "SHG05(SHG-05)",  area:  "ሳንሱሲ ፤ ከታ ፤ ከታ ሚካኤል ሰፈር ፤"   },
+{ code:  "SHG06(SHG-06)",  area:  "ሩፋኤል ቤተክርስቲያን ፤ አባ ዲና ፤ ጡረታ ድልድይ ፤ ሰሜን መዘጋጃ ጤና ጣቢያ ፤ ጥቁር አባይ ማተሚያ፤ ጳውሎስ ሆስፒታል ጀርባ ፤ ሲስተር ቁንጬ ፤ 03 ኮንዶሚኒየም ፤ ወደ እንቁላል ፋብሪካ አደባባይ ፤ ኖህ ሪል ስቴት ( ቢጫ ፎቅ አካባቢ"   },
+{ code:  "SHG07(SHG-07)",  area:  "ዊንጌት ት/ቤት፣ ድሬ ቆዳ ፣ ጊዮን በረኪና ፤ መከላከያ መኖሪያ ፤ ኢንዱስትሪ መንደር ፤ ሚኒሊየም ሰፈር ፤ ሸጎሌ ጨፌ ሰፈር ፤ ጉለሌ እጽዋት ማዕከል ፤ ኪዳነ ምህርት ፤ ሸጎሌ መንደር 7 ፤ ዊንጌት ጤና ጣቢያ ፤ አበራ ሆቴል ፤ እምነበረድ ፤ አጠና ተራ ፤ ኢትዮ ጠቢብ ፤ ደጉ ሆቴል ፤ ሰፈረ ሰላም ።"   },
+{ code:  "SHG10(SHG-10)",  area:  "መድሀኒያለም ት/ቤት ጀርባ ፤ መድሀኒያለም ኮንዶሚኔም ፤ ሩፋኤል ፤ ፊናንስ ፤ ቦናት ፤ ሸጎሌ ቴሌ ፤ አንበሳ ጋራጅ ፤ጳውሎስ ሆስፒታል ጀርባ ፤ ውሃ ጋኑ አካባቢ ( ጎማ አደባባይ )"   },
+{ code:  "SHG8(SHG-8)",  area:  "ኢትዮ ሸክላ"   },
+{ code:  "SHG9(SHG-9)",  area:  "ቃሌ ጨረታ ጋር ፤ ብርጭቆ ማርያም ፤ 40/60 ፊት ለፊት ( ኒኮላ ሜዳ ) ፤ ጠሮ አራት መንታ ፤ ጠሮ ስላሴ ፤ ሹራብ መህበር ፤ ጠሮ መስኪድ ፤ አጠና ተራ ፤ ኮልፌ ጤና ጣቢያ"   },
+{ code:  "SUL01(SUL-01)",  area:  "ሱልልታ ኮካ ፤ ሚዛን ፤ ሹፉኔ ፤ አፍሪካ ልቀት ፤"   },
+{ code:  "SUL02(SUL-02)",  area:  "ሱሉልታ አትሌት መንደር፣ ሚዛን ሽፍኔ በከፊል ፤ አልሚ ቆሎ ፤ ሱልልታ ሳተላይት( ኢቲዮ ቴሌኮም ) ፤ ጎሮ ጫንጌ ፡"   },
+{ code:  "SUL04(SUL-04)",  area:  "ኮካ ማዞሪያ ፣ ፍተሻ አካባቢ፣ እንጦጦ ማርያም ቤ/ክ አካባቢ፣ ሽሮ ሜዳ አካባቢ፣ ስፔስ ሳይንስ፣ሽንቁሩ ሚካኤል ፣አካኮ ገብርኤል"   },
+{ code:  "SUL05(SUL-05)",  area:  "አርኪ ውጀሃ፣ ሱሉልታ መሐል ከተማ ፣ ለገዲማ ፣ ጫንጮ"   },
+{ code:  "SUL06(SUL-06)",  area:  "ሱሉልታ ቆዳ ፋብሪካ ፣ ኮሶ በር ፤ ሱልልታ ሰብስቴሽን ጀርባ ያሉ መንደሮች"   },
+{ code:  "SUL07(SUL-07)",  area:  "ሱልልታ መሀል ከተማ ፤ኢንዱስትሪ መንደር ፤ ወሌ ፤ ጎሮ አርባ ፤ አቢሲኒያ አካባቢ ፤ ዳሽን ባንክ ፤ መዘጋጃ ፤ ኪዳነ ምህረት መውጫ ፤ ሱልልታ ቄራ ፤ ሱልልታ ስላሴ ፤ አለሙ ማደያ"   },
+{ code:  "SUL09(SUL-09)",  area:  "ኢትዮ ሴራሚክ"   },
+{ code:  "SUL10(SUL-10)",  area:  "ኢትዮ ሴራሚክ"   },
+{ code:  "SUL12(SUL-12)",  area:  "ኦሮሚያ ብረታ ብረት"   },
+{ code:  "WER01(WER-01)",  area:  "ኦቪድ ሪል ስቴት ፤አብሽሮ ሱቅ ፤ ካሳንቺ ሰፈር ፤ ገርጂ ሰፈር ፤ በሎ ሰፈር ፤"   },
+{ code:  "WER04(WER-04)",  area:  "ሳሚ ህንጻ ፤ ስካይ ላይት ሆቴል ፤ ሚሊኒየም አዳራሽ ፤ አለም ሲኒማ ፤ አባሳደር ሆቴል ፤ ጁፒተር ሆቴል እና አካባቢው"   },
+{ code:  "WER05(WER-05)",  area:  "ኔክሰስ ሆቴል ፤ አንበሳ ጋራጅ ፤ ኢምፔሪያል ሆቴል ፤ 24 በከፊል"   },
+{ code:  "WER06(WER-06)",  area:  "ምስራቅ ቁጥር 4 ማዕከል ፤ ሰንሻይን ፤ ካዲስኮ ሆስፒታል ፤ ሮባ ዶቦ አካባቢ ፤ ኮሪያ ሆስፒታል ፤ እንቡጥ ት/ቤት ፤ ዮኒቲ ዩኒቨርስቲ"   },
+{ code:  "WER07(WER-07)",  area:  "ደረጃዎች መዳቢ ባለስልጣን ፤ ግብርና ምርምር ፤ ቦሌ ክፍለ ከተማ ጽፈት ቤት ፤ ውሃ እና ፍሳሽ ቢሮ ፤ ሴንቸሪ ሞል ፤ እግዚአብሔር አብ ቤተክርስቲያን"   },
+{ code:  "WER08(WER-08)",  area:  "ፍሊንት ስቶን አካባቢ፣ ጎሮ አደባባይ ፤ ጎሮ ሚካኤል ታቦት ማደሪያ ፤"   },
+{ code:  "WER09(WER-09)",  area:  "ኢስታንቡል ሆስፒታል ፤ የኢትዮጵያአየር መንገድ ዋናው በር አጠገብ ፤ አቬሽን አካባቢ ፤ ብራዚል ኢምባሲ ፤ ኢቲዮ ሜትሮሎጂ ፤ አዲስ አምባ ት/ቤት እና አካባቢው"   },
+{ code:  "WER11(WER-11)",  area:  "ገርጂ አዲሱ ዲሲሲ ሕንፃ"   },
+{ code:  "WER12(WER-12)",  area:  "ጃክሮስ ፣ ዓለማየሁ ሕንጻ ፤ ጎሮ ገብርኤል ፤ የረር ሆስፒታል ፤ አገው ሰፈር"   },
+ {  code:"2005807360 →RSG →(AC01, AC02, AC06)",   area : "Balcha Hospital, Azmera shiro bestegira, Adere Sefer, Talian(Taliyan) Enchet bet, Lideta Fird bet bestegira, Helen Hintsa, Mekoninoch metatefia bestegira, Mechare Condominium, Kana dabo bet bestekegn, 31 kebele Meznagna bestekegn, Lideta Biskut Bet, Gola Michael, Haylom t/bet, Dese Hotel, Lideta Tsebel, Tinbaho monopol, Tiyit fabrica, Firehiwot condominium & t/bet, Tureta sefer, Federal police wanaw mesriya bet, Tegbared t/bet, Wabe Shebele Hotel, Hibret bank h/office, Zemen bank, Karta srawoch, Biherawi Bank, Emigration(immigration), EBC(ETV) Radio, Meksico(Mexico) Adebabay, Tikur Anbessa Hospital :: Lideta Abdella Hinta Jerba ; Lideta B/Kiristiyan fitlefit, Lideta Kefitegna Fird Bet, Awash Weyn tej Fabrica, Coca Cola FabricA, Abinet, Bilen(blen) Hotel, Mola Maru, Chid Tera, Bikil Tera, Mercato(merkato), Gaz tera, Mesob tera, Doro tera, Mierab Hotel begimash, Selam Baltina, Geja(Gejja) sefer, Lideta Condominium, Lideta K/ketema Wereda 08 ; Emigration(Immigration), Gola Mikael, Temama Hintsa, Kana Dabobet, Chid Tera, Tana gebeya, Eliana Moll, Cherchil(churchil) View Hotel, Teklehaymanot B/Kristiyan, Abune Petros ,Awutobis tera (autobis tera) , Geja Sefer kebele 30, 41, 42, Tikur Anbessa T/bet, Joniya tera, Arada, :: Sumale Tera Kelifa Hintsa Jerba::",},
+{  code:  "2005807368 →RSG →(AC03, AC04, AC09)",   area: "Zenebework Total, Augusta, Tabot Maderia, TorHayloch Adebabay, Lafto Mol , Karl Adebabay, Canada Embassy, Batu Condominium, HaEzo Hintsa, Gurage sefer, 5 kutir mazoria, 2 kutir mazoria ;; Zenebework Adebabay, Girar Condominium, Siki Mariyam, Alem Bank, Alpha T/Bet, Silte Sefer, Kidanemihret Bekefil, Ayertena Sami Restorant Akababi",},
+{  code:  "2005807369 →RSG →(AC05, AC10)",   area: "TorHayloch(torhiloch), 18 likuanda(lukanda), 105 Mazoriya Condominium, Abajale, Yeshi Debele, Congo sefer , Kolfe, Kolfe Keranio K/Ketema Wereda 8,10,12 :: Kolfe Mebrat Hayl Substation ategeb",},
+{  code: "2005807370 →RSG →(AC07, AC11)",   area: "Weyra Tena Tabiya, Augista(augusta) Dildiy, weyra taksi meyazia(meyazha), Anfo Addisu Asfalt, Betel Posta Bet",},
+{  code: "2005807386 →RSG →(AD05, AC13,AD11)",   area: "Asko Sansusi : Asko Addis Sefer, Kale sefer akababi, ke winget eske 18 mazoriya dires, lomitera, mikiland condominium akababi : Birchiko Condominium : LomiMeda : SorAmba : Tero : Jafer Meskid : Filipos Industry Mender : Trafic Sefer : Abadi T/Bet, Kale T/Bet : Sefere selam(sefereselam) : :: Winget adebabay Gulele Esat Adega ategeb ::",},
+{  code: "2005807385 →RSG →(AA11,AD10)",   area: "Ferensay, Kela(kella), ke 6 kilo wede Ferensay bekegn bekul yalu seferoch, Janmeda, Aseffa Megazen, Wuha Bono, Ferensay Legasion, Korea Sefer, 41 Eyesus, Gurar, Kidanemihret, Biret Dildiy, Minilik Hospital, Resa Mewucha, Bela(Bella), Talian Embassy, Germen Embassy, Ferensay Gurara",},
+{  code: "2005807358 →RSG →(AB14, AA12,AB17)",   area : "Abo Adebabay : Bole bulbula : Aser Construction , Hussein Gibi : Tele Tower - Adissu Goro menged(beste misrak): China keftor, Bole Michael",},
+{  code: "2005807331 →RSG →(AA02)",   area : "AirPort jerba, Millinium adarash, Ednamol, Bras Hospital, 22, Awuraris, Moenco, Jiru Sefer, Bole Homs, Arogew Gumruk, GolaGol, Urael B/Kristiyan bestekegn ,Bole Matemiya bet, bekul, Kazanchis Condominium, Dinberua hospital fit lefit :: Bole werku hinsta lay wereda 17 tena tabiya alef bilo",},
+{  code: "2006317729 →RSG →(AA03)" ,   area: "Goro Police Station, Goro sefera, Gerji Senshine(sunshine) Mender, Gerji 3 Condominium , Egziabher Ab church, Vision School , Gerji Mebrat hayl, Gerji Giorgis, Roba, Kasanchis(kazanchis) sefer, gurd shola(gurdshola), Yerer, Emperial, Gibrna(gibrina) minister, Gerji Selam Sefer, Bole K/K Mikirbet, Temerachoch Sefer/Apartama /, Anbesa Geraj(garaj), Totot, :: Gerji jakrose akababi press corner filefit balew metatefiya",},
+{  code: "2005807332 →RSG →(AA04)",   area : "Bole Lemi Adebabay eske Bole Lemi Industry Park, Lamberet, Abune Aregawi, Lamberet Menehariya, Weji, Beg tera, Kotebe Mebrat Hayl jerba, Civil Service, Salite Mihret, CMC liyu betoch fitlefit, wede semit bekegn bekul , Figa Fird bet jerba, Safari Nigid bank, CMC gibi, Joni Geraj :: Gurd shola tele filefit",},
+{  code: "2005807333 →RSG →(AA05, AA08)",   area : "Kotebe Kidanemihret, Suzi Meda, Washa Mikael, Medhanialem B/Kristiyan, Cotebe Biretabiret Akababi, Memihiran College Jerba , Gedera Adebabay Bestegira, Tiru Menafesha, Kulti Mender, Doro Erbata, Kara Silasie, Kara Siga Betoch, Acha duket Fabrica, Happy Village T/bet, Legejila Teklehaymanot, Biherawi Mehandis, Akimginbata( akim ginbata), Yeka Abado, Wesen Grossery, Mesalemiya Gebriel, Kara Gebisa, Ankorcha, Liz Mender, Wereda 10 biro, Amanuel B/kristiyan, Kotebe Dehininet, Kotebe 02 akababi, Mebrat hayl garaj, CMC Mikael B/Kristiyan, Wereda 3 Police tabiya, Badime Mahiber, Berta betoch, Gari Mazoriya, Wendrad T/bet(wendirad), Noc Madeya, Hilside T/bet, : Kotebe bireta biret fitlefit Mebrat Hayl gibi wust ; Yeka abado G-7 adebabay akababi",},
+{  code: "2005807334 →RSG →(AA01, AA06)" ,   area: "BeteMengist fitlefit, Urael B/Kristiyan akababi, Agoza Gebeya, Adewa Dildiy, , Turist Hotel akebabi, Aware, Megenagna 24 kebele, Balderas Condominium, lem hotel, Kasanchis(kazanchis) Lakech cinema, 6gna police tabya, Sojat hintsa(yekedmo shewa police yeneberbet), Betemengist erasu : :: Kazanchis nigd bank filefit ; Megenagna Adebabay, LamBeret, Abune Aregay, Israel(Esrael) Embassy, Bole Alemakef Stadium, Golagol Adebabay, Kebena Dildiy, Signal Adebabay, Sumeya Meskid, Shola Gebeya, Russia Embassy, Dinberua Hospital, British Embassy, Kenya Embassy :: Megenagna sumeya meskid ategeb meseret belay hintsa",},
+{  code:  "2005807338 →RSG →(AA09, AA10)",   area : "Bole Arabsa, Bole Lemi, Semit Condominium, semit 72 buna bord jerba",},
+{  code: "2005807373 →RSG →(AB01,AC14,AB04)" ,   area: "Germen Meskid, Kolo Tera, Kirkos church, Wendimamach T/bet, Kebele 31 Wefcho bet akababi, Kirkos tabot maderiya, Cherkos, Bulgaria, Meskerem Mazoriya, Jamaica Embassy, Museso Menkeriya, Kebele 47 Shell Depo, Wengelawit hintsa, Tele Maseltegna, PoPolarea Police station, Shimelis Habte T/bet, Waliya T/bet, Motor Garaj jerba, Abiyot Kirs T/bet, Pepsi Fabrica, Kebele 50, Tele gimja bet, Sisay meda, Mezegaja garaj jerba eske Egizibishin, Ertria (Eritrea) Embassy, 4gna kifle tor, Hadsia Gebeya, Wiski Makefafeya, Abyot Adebabay [Meskel Adebabay], Ashewa Tera, Gotera Condominium, Meskel flower(filawer), 49 kebele, Meshualekya, Riche, Lancha, Beklobet, Kirkos Sub City Wereda 4 :: Global Hotel ;; Biherawi tiyatir : Mexico : legehar : Meskel Adebabay[Abyot adebabay] : Filwuha(filwuha)(felwuha) : Adams Povilon, kebele 08, Kera, Beg tera, keBulgaria",},
+{  code:  "2005807374 →RSG →(AB02,AC15)" ,   area: "Estifanos B/kristiyan fitlefit, Bambis Supermarket, ke Urael B/kirstyan kegnun yizo iske Peckock menafesha Jerba, Wello Sefer(Welo sefer), Denbel city center, Olompia, Mazegaja Garaj fitlefit 35 kebele, ke karamara dildiy -Airport Hotel, Bole Airport,, Ruwanda, Hakim Mamo Dildiy dres, Bole milinium adarash fit lefit. Meles foundation,Kasanchis :: Ke gotera wede Welo sefer Meheja Tas Hintsa Fitlefit :: Kasanchis,kazanchis",},
+{  code:  "2005807344 →RSG →(AB03)",   area : "Mexico Nigid Mikir Bet, National Motors, Asmera Kamp, Biherawi Chemical Chora Gaz, Africa Hibret, Gidey Gebrehiwot hintsa, Efrata Grossery, ke sarbet wede Mekanissa sinhed bestegra bekul, Misrak Tsehay Gebreal B/Krstiyan, Germen Adebabay, Vatican Embassy ,Jemo Michael B/Kristiyan fitlefit,China Camp(koshe), China Camp(koshe), Bisrate Gebreal B/Kiristian,Karl Adebabay,SarBet, Germen Adebabay,Batu Condominium, Jijjiga sefer, Michael adebabay, Jemo ke block 43 - 222 dires, Batu Condomum 2,5 bemulu. : ABO Mazoriya Pic Hintsa Gruond Floor: Minaye_Hintsa",},
+{  code: "2005807353 →RSG →(AB12,AB11)" ,   area: "Tuludimtu Condominium, 700 mahiberat, Koye Feche (koyefeche) condominium",},
+{  code:  "2005807346 →RSG →(AB05)" ,   area: "Mexico Keker Hintsa akababi, Legehar Condominium, Gebreal B/Kristiyan, Ersha sebil, Yakona, Merkoryos B/Kristiyan, Mebrat hayl Condominium, Moenco sefer, Gena school, Isuzu garaj, Gofa camp, Almaziye meda, Welde grossery, Kera, Gotera Pepsi fitlefit : Gofa Store, Eskaniya(iskaniya), International Laboratory, ::Ke Gofa Wede Mebrat Hayl 150 Meter Wered Bilo Mahibereseb Police Tabia Jerba ::",},
+{  code:  "2005807347 →RSG →(AB06)" ,   area: "Biheretsige, JaJa wenz, Key Afer, DaMa Hotel, Adey Abeba, Saris addis sefer, Saris abo Dildiy - Awash Koda, Buna board (Bunaboard),Nifasilk T/bet, Yosef church, Hakim Mamo sefer, :: Saris Nok Madeya FitleFit Dawi hintsa Jerba",},
+{  code:  "2005807348 →RSG →(AB07)",   area : "Saris 58 silassie : Girar sefer : Arsema jerba : Hana Mariyam (Hanamariyam) : sefera Lafto : Mango sefer :: Mebrat Hayl Lafto Substation Ategeb ::",},
+{  code: "2005807349 →RSG →(AB08, AB13)",   area : "Akaki Gebeya, KorKoro Fabrica, Ras Agez, Asama Gibi, Kilinto Condominium, Akaki, Gelan gura, megala Sefer, Unisa University, 07 kela, Shashemene Aba Samuel, Gerado Aba Samuel, Fero Sefer, Arsema Church, :: Akaki Yedrow Babur Tabia Ategeb ::",},
+{  code:  "2005807350 →RSG →(AB09, AB15)" ,   area: "Kality (kaliti), Gelan Condominium, Total (Cafdam), Chefe, Maseltegna, Crown 40/60 Mahiberat, Selam hintsa jerba, KidaneMihret, Werku sefer, Ayer Hayl, Gumruk, Ethio Kimemakimem, Waliya Gomma, CRBC Industry, Hana Wenz, Crown Jerba, Cheru Medhanialem, Akaki Dildiy kebele 09-08, Derartu t/bet jerba, Silti Maryam Sefer, Gurage Sefer, Termo Plastic Idustry Jerba, Gelan Crasher, Salegora, :: Kality Ke cheralia wered bilo Abyssinia bank akababi ::",},
+{  code:  "2005807351 →RSG →(AB10)" ,   area: "Hayle Garment (Haile garment): Kersa ena Kontoma : Sefera : Oromia Condominium : China Realstate : Varnero :Jemo 3, Lebu Muzika sefer : Furi Hurbu (wereda-04 ) : Seid Yasin Yegebeya Maikel : Werdofa(Hordofa) loj :jemo 1 condeminium Block1-42:jemo 2:Ke mikial wede jemo snhed bekegn bekul yalu areawoch:koshe:jemo mariam sefer:anbessa garaj:jemo mastewot fabrica:Olmart jerba: Nifas Silk K/Ketema jerba : lebu",},
+{  code: "2005807376 →RSG →(AD01)" ,   area: "Semen Mazegaja, Yigezu Condominium, Islam Mekabir, Abakoran Sefer, Mastawekiya Minister, Giorgis, Chilot, Zebegna sefer ,Ras Mekonin dildiy, Nigeria Embassy, Guto Meda, Kibebe tsehay hitsanat Masadegia, Kechene Medhanialem B/Kristiyan, ke Abune Petros eske Habtegiorgis, Afincho ber akababi, Dejach wube, Semen Hotel, Sebara babur, Talian Sefer, Gedam Sefer, (ke semen mazegaja eske kechene medhanialem church dires), Abebech Gobena, Abet Hospital, Kidus Yohannes church, Alkan College, Rasdesta Hospital, Shola doro gebeya, Kelemwork school, Queens college, Ras emiru dildiy piassa , tedros adebabay,chirchil hotel , Arada-4,3gna police tabia :: Sarem hotel fit lefit ::",},
+{  code:  "2005807378 →RSG →(AD03)" ,   area: "Addisu Gebeya : Addisu Gebeya 03 Condominium : Kechene 1gna menged - 2gna menged - 3gna menged : Kechene Medhanialem B/Kristiyan fitlefit, Kechene sefer, Kechene meketeya, Gulele police memriya akababi, Markos megazen akababi, Egziarab B/Kristiyan akababi : Semen Mezegaja fitlefit : Rufael B/Kristiyan : Shegole KidaneMihret fitlefit : Abadina Radio Megenagna fitlefit : Lazarist , ke semen mazegaja eske dilber, 8 kutir mazoriya : Sheger menafesha : :: Gulele K/Ketema fit lefit / Belay Zeleke T/Bet fitlefit ::",},
+{  code: "2005807379 →RSG →(AD04)" ,   area: "Atena tera : Paris sefer \"Winget adebabay, ke emnebered fabrica eske winget :: Milinium sefer : Meles foundation : Gulele Mender 7: Shegole : Chefe : Rufael : Finans : Enkulal Fabrica : Bicha fok : Selam Tena Tabia : Wereda 08 police tabiya : Girum Hospital : Abebe Bikila stadium : Michael B/Kristiyan : Addis ketema wereda 06 : Pastor(paster) : Sister Kinche : Pawlos Hospital : ke paster eske enkulal fabrica akababi, Gulele/wereda 9/ : Sumeya T/Bet : Medhanialem T/Bet : Arada K/KETEMA wereda 5 bemulu : Taiwan Sefer :Winget tenatebiya :: pawlos hospital fit lefit ::Winget(addis ketema K/K) , atana tera(addis ketema K/K)",},
+{  code: "2005807381 →RSG →(AD06, AD08,AD09)",   area : "HabteGiorgis Dildiy, Africa Clinic, Gojam berenda, ke Paster eske Addisu Michael B/Kristiyan dires, Ketema tera, 30 kebele, Mersha Hotel, Felege Birhan 31/32/33/34 kebele, Awutobis tera(autobis) wereda 7 ena 9, Genete T/Bet, Eshet T/Bet, Shewatsega hintsa, Mesalemiya, KuasMeda, 20 kebele, Abebe Bikila, Beg tera, Ethiotebib Hospital, Muday Matemiya bet, Taiwan jerba, Kefitegna 7 T/bet akababi, Chew Berenda :: Adisu Mikael , geneme t/bet jerba :: ; Sebategna(7gna), Ethiotebib chimad akababi, Ehil berenda, Amanuel b/k akababi, Tsehay gibeat condominium akababi, Merkato(mercato) : Dubai tera : Shera tera : Arategna(4gna) Police tabiya, Awutobis tera(Autobis) Fitlefit, Autobis tera biherawi lotory akababi, Merkato(mercato) Anewar Meskid akababi, merkato(mercato)- shera tera, wenber tera, dubai tera ena Amede Gebeya akababi : Amanuel Total : Kefitegna 4 t/bet : Radical t/bet :: sebategna dire hintsa lay ::",},
+{ code:   "2005807371 →RSG →(AC08, AC12)" ,   area: "Fanuel B/Kristiyan, Ajamba Condominium, Kara Kore Condominium, Medhanialem , Gamo Sefer, Radio fana jerba , Addis Sefer ,Deginet Condominium , Sodo Sefer, Wetader sefer, Silte Sefer kewanaw menged bestegira :: Kara Kore Substation ategeb",},
+{ code: "2005807335 →RSG →(AA07)" ,   area: "Yeka 2 Condominium, Ayat 1 & 2, Semit akababi, Meri, Fanuel, Semit 72, Senshine, Semit leslasa fabrica be gira bekul yalu seferoch, :: Goro Tesfa Cinema Fitlefit",},
+{ code: "2005807377 →RSG →(AD02, AD07)" ,   area: "Arba Dereja(40 dereja), sidist kilo(6 kilo) : Biret Dildiy bestegra bekul: Kidanemihret : Seba dereja(70 dereja) : shiromeda : Entoto Kidanemihret : Guskuam(Quskuam Mariam), ke shiromeda eske kidanemihret b/k, ke shiromeda eske entoto b/k, ke Menen eske woreda 11 police tabiya dires : Entoto Mariam : Kechene: Akako : Shinkuru Michael : Janmeda Ayele Groserry :America Embassy : Spain Embassy :: Sibseba Maikel : Menen : Yekatit 12 T/Bet : MiskaiHAzunan Medhanialem Church : Samba Nekersa (Petros Hospital) : Akim Ginbata : blocket: Addis Ababa University ; Ginfile akababi, Beler akababi, ke Shi semaniya(1080) eske arat kilo, ke arat kilo eske Piassa(piyassa), Piassa ayalew muzika bet akababi, Piassa kewanawu mesriyabet fitlefit yalu seferoch(arsho, serategna sefer), Kidistemariyam B/Krstiyan Akababi, PIASA_Work Betoch akababi, Mekelakeya feresegna Camp, Yared Musica t/bet, Mekonin dildiy akababi Nazret t/bet akababi, Biherawi Museum, 5 kilo(amist kilo) BeteMengis t : EriBekentu , Ginfile, 4 kilo, Churchil Godana :Anbessa Gibi, Doromanekiya(Doro manekia), aware , keybahirCondominium_fitlefit Arat kilo University, Minilik t/bet, Tureta minister, Kebena Kedanemihret, Kebele 10 Meznagna",}
+           
+        ];
+// DIRECTORY DATA
+        const directoryData = [
+            { category: "Head Office & Addis Ababa Regions", items: [
+                "Head Office | 011-636-6028",
+                "North Region (In front of Abune Petros) | 011-126-7244",
+                "South Region (In front of Global Hotel) | 011-557-3175",
+                "East Region (Kotebe Metallurgy) | 011-667-5875",
+                "West Region (In front of Kasanchis Turnpike) | 011-552-0231"
+            ]},
+            { category: "Sheger City & Surrounding Districts", items: [
+                "Burayo | 011-284-0614",
+                "Alemgena | 011-338-1314",
+                "Wolete | 011-380-5250",
+                "Bishoftu 1 | 011-433-3181 / 8773 / 8075",
+                "Bishoftu 2 | 011-432-0335",
+                "Legetafo | 011-218-0099",
+                "Slulta | 011-161-7960",
+                "Holta | 011-261-0345",
+                "Sendafa | 011-686-0564"
+            ]},
+            { category: "Emergency Number", items: [
+                "Water & Sanitation | 906",
+                "Addis Ababa Fire & Rescue | 939",
+                "Red Cross | 907",
+                "HIV/AIDS Preventio | 952",
+                "Traffic Police | 945",
+                "Anti-Corruption | 988",
+                "Addis Ababa Police Commission | 991",
+                "Oromia Police Commission | 993",
+"Ethiopian Airlines | 6787",
+"Tebta Ambulance | 8035",
+"Straight Light | 9101"               
+            ]},
+            { category: "Regional Administrations & Short Codes", items: [
+                "Harari Region: For Harari Region customers | 9466",
+                "Dire Dawa: For Dire Dawa Administration customers | 8145",
+                "Benishangul-Gumuz Region: For Benishangul-Gumuz Region customers | 9418",
+                "Somali Region: For Somali Region customers | 9337"
+            ]},
+            { category: "Amhara Region Offices", items: [
+                "Amhara Region Coordination Office | 058-220-4822",
+                "Bahir Dar Region Office | 058-320-9618",
+                "Dessie Region Office | 033-111-5962",
+                "Debre Berhan Region Office | 011-163-7526",
+                "Debre Markos Region Office | 058-178-1721",
+                "Gondar Region Office | 058-211-5495",
+                "Woldia Region Office | 033-431-5061 // 033-431-3971"
+            ]},
+            { category: "Oromia Region Offices", items: [
+                "Oromia Region Coordination Office | 011-636-6028",
+                "Sheger Region Office | 011-854-7387",
+                "Jimma Region Office | 047-111-1179",
+                "Metu Region Office | 047-141-0723",
+                "Adama Region Office | 022-211-0023 // 022-211-4556",
+                "Chiro Region Office | 025-551-2952",
+                "Bale Robe Region Office | 022-244-0605",
+                "Nekemte Region Office | 057-660-3492",
+                "Ambo Region Office | 011-260-9851",
+                "Shashemene Region Office | 046-211-0066"
+            ]},
+            { category: "Tigray, Sidama & Other Regional Offices", items: [
+                "Mekelle Region (for customers) | 034-240-6224",
+                "Shire Region (for customers) | 034-244-0189",
+                "Sidama Region Office | 046-220-3319",
+                "For Hawassa customers | 046-220-0419",
+                "For Gambella Region customers | 047-551-0098",
+                "South West Region Office (Bonga) | 047-331-1667",
+                "Central Ethiopia Regional Office (Hossana) | 046-178-8255",
+                "For our customers in the Afar Region | 033-666-0671"
+            ]},
+            { category: "Addis Ababa - West District Branches", items: [
+                "Lideta Condominium, near Belay Teklu | 011-854-7830",
+                "Ayer Tena, near Mobil Shawa Supermarket | 011-369-1059",
+                "Kolfe, near the Electric Utility (Mibrat Hayl) substation | 011-273-8727",
+                "Bethel Post Office | 011-349-5560",
+                "Medhanialem exit, near Hidassie Primary School | 011-854-7257 / 011-854-8255",
+                "Bulgaria Intersection, near Abyot Butcher Shop | 011-470-6852",
+                "Road from Gotera to Wolo Sefer, opposite Tas Building | 011-470-7034"
+            ]},
+            { category: "Addis Ababa - East District Branches", items: [
+                "Opposite the New Stadium, next to police station (Mulmul Bakery building) | 011-662-2237 / 011-854-8366",
+                "Gerji, past Electric Utility (Mibrat Hayl) station, near Awash Bank | 011-896-6144",
+                "Gurd Shola, near Latica Bakery | 011-646-5148",
+                "Past Wosen, near Sunshine (opposite Woreda 12) | 011-667-5963",
+                "Shola, near Sumeya Mosque | 011-515-5759",
+                "Summit, near Fire Station and Habesha Fuel Station | —",
+                "Ayat Square, on road to Summit, opposite Lemi Kura | 011-660-3551"
+            ]},
+            { category: "Addis Ababa - North District Branches", items: [
+                "Giorgis (Dejach Wube): In the building housing Awash Bank | 011-155-6823 / 011-156-6389",
+                "4 Kilo: Opposite Basha Wolde Condominium | 011-155-5150",
+                "Addisu Gebeya: Near Keletseb Tsion Condominium | 011-127-5052",
+                "Opposite Paulos Hospital | 011-213-0048",
+                "Autobus Tera: Just past Geneme School | 011-278-2359",
+                "Bela Turn: Near Commercial Bank | 011-857-8757 / 011-857-5687",
+                "Awoliya: Next to Sintu Building | 011-270-7902"
+            ]},
+            { category: "Addis Ababa - South District Branches", items: [
+                "Bole Bulbula Medhanialem: Near Hibret Bank | 011-320-5810",
+                "Mekanisa: In the Mekane Yesus Seminary building | 011-320-5810",
+                "Tulu Dimtu - G7 | —",
+                "Gofa Camp: Just down the road | 011-470-5911",
+                "Saris: Behind Dawit Building, opposite NOC Gas Station | 011-440-4225",
+                "Lebu: Near Electric Utility (Mebrat Hail) substation square | 011-471-1471",
+                "Akaki: Inside Electric Utility compound, near old train station | 011-435-1392 / 011-434-0058",
+                "Kaliti Korki: In Nyala Insurance building | 011-439-4687",
+                "Jemo 3: Just past Glass Factory near Dashen Bank | —"
+
+            ]}
+        ];
+
+        // FIND CENTER BY RSG DATASET
+        const rsgCenterData = [
+            { id: 1, rsg: "AC01, AC02, AC06", detail: "WEST → → CSC-1 {2005807360},    IBRAHIM YASSIN    ˃˃    EY00473074}" },
+            { id: 2, rsg: "AC03, AC04, AC09", detail: "WEST → → CSC-2 {2005807368},    MEDHANIT TEMARE    ˃˃    MT00477667}" },
+            { id: 3, rsg: "AC05, AC10", detail: "WEST → → CSC-3 {2005807369},    YENENESH MERDASA    ˃˃    2503754396}" },
+            { id: 4, rsg: "AC07, AC11", detail: "WEST → → CSC-4 {2005807370} ,   Riyad    ˃˃    RM00473198}" },
+            { id: 5, rsg: "AD05, AC13, AD11", detail: "NORTH → → CSC-7 {2005807386}    HAWI MULUGETA    ˃˃    HM00468860}" },
+            { id: 6, rsg: "AA11, AD10", detail: "NORTH → → CSC-6 {2005807385},    yeshimebet gezahegn    ˃˃    YG00503968}" },
+            { id: 7, rsg: "AB14, AA12, AB17", detail: "SOUTH → → CSC-2 {2005807358},    Tigest Gabisa    ˃˃    Tg00547524}" },
+            { id: 8, rsg: "AA02", detail: "EAST → → CSC-3 {2005807331},    ALEMAYEHU TADESE    ˃˃    AT00303231}" },
+            { id: 9, rsg: "AA03", detail: "EAST → → CSC-4 {2006317729},    SErkalem    ˃˃    SA00502954}" },
+            { id: 10, rsg: "AA04", detail: "EAST → → CSC-5 {2005807332},    TEKELE GETANEH    ˃˃    TG00501826}" },
+            { id: 11, rsg: "AA05, AA08", detail: "EAST → → CSC-6 {2005807333},    Mola Tibebu    ˃˃    MT00473234}" },
+            { id: 12, rsg: "AA01, AA06", detail: "EAST → → CSC-7 {2005807334},    Dinbernesh Garedew    ˃˃    DG00226528}" },
+            { id: 13, rsg: "AA09, AA10", detail: "EAST → → CSC-8 {2005807338},   Fikre Negash    ˃˃    FN00407669}" },
+            { id: 14, rsg: "AB01, AC14, AB04", detail: "WEST →→→ CSC-7 {2005807373},    Elias Asefa    ˃˃    EA00407830}" },
+            { id: 15, rsg: "AB02, AC15", detail: "WEST → → CSC-8 {2005807374},   Endale Muleta    ˃˃    EM00469001}" },
+            { id: 16, rsg: "AB03", detail: "SOUTH → → → CSC-3 {2005807344},    ERMIAS SINTAYO    ˃˃    ES00286817}" },
+            { id: 17, rsg: "AB12, AB11", detail: "SOUTH →→→ CSC-4 {2005807353},    Aberu Hawas    ˃˃    BM00520456}" },
+            { id: 18, rsg: "AB05", detail: "SOUTH → → → CSC-5 {2005807346},    Gadise Shiferaw    ˃˃    GS00502829}" },
+            { id: 19, rsg: "AB06", detail: "SOUTH → → → CSC-6 {2005807347},    TENALEM KINDE    ˃˃    TK00473289}" },
+            { id: 20, rsg: "AB07", detail: "SOUTH → → → CSC-7 {2005807348},   LIKNESH KEBEDE    ˃˃    LK00499514}" },
+            { id: 21, rsg: "AB08, AB13", detail: "SOUTH → → → CSC-8 {2005807349},    TESFAYE TOLLA    ˃˃    TT00449116}" },
+            { id: 22, rsg: "AB09, AB15", detail: "SOUTH → → → CSC-9 {2005807350},    Dereje Abebe    ˃˃    DA00449183}" },
+            { id: 23, rsg: "AB10", detail: "SOUTH → → → CSC-10 {2005807351},    dejene w/aregawi    ˃˃    dw00473370}" },
+            { id: 24, rsg: "AD01", detail: "NORTH → → → CSC-1 {2005807376},    Daniel Ayele    ˃˃    DA00244928}" },
+            { id: 25, rsg: "AD02, AD07", detail: "NORTH → → → CSC-2 {2005807377},    Tsehaye Yihun    ˃˃    TY00407227}" },
+            { id: 26, rsg: "AD03", detail: "NORTH → → → CSC-3 {2005807378},    TSIGEREDA YOHANSE    ˃˃    TY00407498}" },
+            { id: 27, rsg: "AD04", detail: "NORTH → → → CSC-4 {2005807379},    SELAMAWIT GEBISA    ˃˃    SG00520218}" },
+            { id: 28, rsg: "AD06, AD08,AD09", detail: "NORTH → → → CSC-5 {2005807381},    Aselefech Agago    ˃˃    AA00473267}" },
+            { id: 29, rsg: "AC08, AC12", detail: "WEST → → → CSC-6 {2005807371},    MEZGEBU BELSTI    ˃˃    MB00473212}" },
+            { id: 30, rsg: "AA07", detail: "EAST → → → CSC-9 {2005807335},    Weldekidan Debebe    ˃˃    WD00407670}" }
+
+        ];
+const STORAGE_KEY = 'eeu_saved_records';
+const DEFAULT_USERNAME = "Co.center";
+const DEFAULT_PASSWORD = "Eeu@7";
+
+let savedRecords = [];
+let unreadSavedCount = 0;
+let currentSmsLang = 'am'; // Default language
+
+// Initialize App on DOM Load (Consolidated)
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize Application Data & UI Components
+    loadSavedRecords();
+    if (typeof renderFeederTable === 'function' && typeof feederData !== 'undefined') {
+        renderFeederTable(feederData);
+    }
+    if (typeof renderDirectoryTable === 'function') renderDirectoryTable();
+    if (typeof renderQuickLinks === 'function') renderQuickLinks();
+    if (typeof renderRsgList === 'function' && typeof rsgData !== 'undefined') {
+        renderRsgList(rsgData);
+    }
+
+    // 2. Auto-fill Credentials if Remember Me was active
+    const savedUsername = localStorage.getItem('eeu_remembered_user');
+    const savedPassword = localStorage.getItem('eeu_remembered_pass');
+    
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const rememberCheckbox = document.getElementById('rememberMeCheckbox');
+
+    if (savedUsername && savedPassword) {
+        if (usernameInput) usernameInput.value = savedUsername;
+        if (passwordInput) passwordInput.value = savedPassword;
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+    }
+});
+
+// LOGIN HANDLING
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const rememberCheckbox = document.getElementById('rememberMeCheckbox');
+    const errorBox = document.getElementById('loginError');
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+
+    // Clear previous errors
+    if (errorBox) {
+        errorBox.classList.add('hidden');
+        errorBox.innerText = '';
+    }
+
+    // Basic validation check
+    if (!username || !password) {
+        showError('እባክዎን የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ (Please fill in all fields)');
+        return;
+    }
+
+    // Set loading state
+    if (typeof setLoading === 'function') setLoading(true);
+
+    // Simulate short delay for realistic login UX
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Check input against default credentials
+    if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
+        if (rememberCheckbox && rememberCheckbox.checked) {
+            localStorage.setItem('eeu_remembered_user', username);
+            localStorage.setItem('eeu_remembered_pass', password);
+        } else {
+            localStorage.removeItem('eeu_remembered_user');
+            localStorage.removeItem('eeu_remembered_pass');
+        }
+
+        // Successful login steps
+        document.getElementById('loginScreen')?.classList.add('hidden');
+        document.getElementById('dashboardScreen')?.classList.remove('hidden');
+
+        if (typeof renderFeederTable === 'function' && typeof feederDataArray !== 'undefined') {
+            renderFeederTable(feederDataArray);
+        }
+    } else {
+        showError('የተሳሳተ የተጠቃሚ ስም ወይም የይለፍ ቃል (Invalid credentials)');
+    }
+
+    if (typeof setLoading === 'function') setLoading(false);
+}
+
+// TAB SWITCHING LOGIC
+function switchSubSection(subName) {
+    const otherSub = document.getElementById('otherInfoSubSection');
+    const savedSub = document.getElementById('savedInfoSubSection');
+    const otherBtn = document.getElementById('otherInfoBtn');
+    const savedBtn = document.getElementById('savedInfoBtn');
+
+    if (subName === 'savedInfo') {
+        otherSub.classList.add('hidden');
+        savedSub.classList.remove('hidden');
+
+        unreadSavedCount = 0;
+        updateSavedBadgeUI();
+        renderSavedInfoTable();
+
+        savedBtn.className = "relative bg-customBlue-600 text-white border border-customBlue-600 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+        otherBtn.className = "bg-white hover:bg-customBlue-100 text-customBlue-800 border border-customBlue-400 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+    } else {
+        savedSub.classList.add('hidden');
+        otherSub.classList.remove('hidden');
+
+        otherBtn.className = "bg-customBlue-600 text-white border border-customBlue-600 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+        savedBtn.className = "relative bg-white hover:bg-customBlue-100 text-customBlue-800 border border-customBlue-400 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+    }
+}
+
+// SAVE & UPDATE DATA
+function handleSaveInfo(e) {
+    e.preventDefault();
+    const title = document.getElementById('infoTitle').value.trim();
+    const category = document.getElementById('infoCategory').value.trim();
+    const details = document.getElementById('infoDetails').value.trim();
+
+    if (!title || !category || !details) return;
+
+    const record = {
+        id: Date.now(),
+        title,
+        category,
+        details,
+        time: new Date().toLocaleString([], { 
+            year: 'numeric',
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit' 
+        })
+    };
+
+    savedRecords.push(record);
+    unreadSavedCount++;
+
+    saveToLocalStorage();
+    document.getElementById('otherInfoForm').reset();
+    updateSavedBadgeUI();
+    if (typeof showToast === 'function') showToast('New Information Saved!');
+}
+
+function updateSavedBadgeUI() {
+    const badge = document.getElementById('savedCountBadge');
+    const inlineTotal = document.getElementById('savedTotalInline');
+
+    if (inlineTotal) {
+        inlineTotal.textContent = savedRecords.length;
+    }
+
+    if (badge) {
+        if (unreadSavedCount > 0) {
+            badge.textContent = unreadSavedCount > 99 ? '99+' : unreadSavedCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+}
+
+function renderSavedInfoTable() {
+    const tbody = document.getElementById('savedInfoTableBody');
+    const filterInput = document.getElementById('savedSearchInput');
+    const filter = filterInput ? filterInput.value.toLowerCase() : '';
+    
+    if (savedRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">No saved entries found.</td></tr>`;
+        return;
+    }
+
+    const filtered = savedRecords.filter(r => 
+        r.title.toLowerCase().includes(filter) || 
+        r.category.toLowerCase().includes(filter) || 
+        r.details.toLowerCase().includes(filter)
+    );
+
+    tbody.innerHTML = filtered.map((r, i) => `
+        <tr class="hover:bg-gray-50 transition">
+            <td class="p-3 font-bold">${i + 1}</td>
+            <td class="p-3 font-semibold text-customBlue-900">${r.title}</td>
+            <td class="p-3"><span class="bg-customBlue-100 text-customBlue-800 text-xs px-2 py-1 rounded-md font-bold">${r.category}</span></td>
+            <td class="p-3 text-gray-700">${r.details}</td>
+            <td class="p-3 text-gray-500 text-xs">${r.time}</td>
+            <td class="p-3 text-center flex items-center justify-center gap-1.5">
+                <button onclick="openEditModal(${r.id})" class="text-amber-700 hover:text-amber-900 font-bold text-xs bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-amber-200 shadow-sm">
+                    ✏️ Edit
+                </button>
+                <button onclick="copySavedRecord(${r.id})" class="text-customBlue-700 hover:text-customBlue-900 font-bold text-xs bg-customBlue-50 hover:bg-customBlue-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-customBlue-200 shadow-sm">
+                    📋 Copy
+                </button>
+                <button onclick="deleteRecord(${r.id})" class="text-red-600 hover:text-red-800 font-bold text-xs bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-red-200 shadow-sm">
+                    🗑 Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openEditModal(id) {
+    const record = savedRecords.find(r => r.id === id);
+    if (!record) return;
+
+    document.getElementById('editRecordId').value = record.id;
+    document.getElementById('editTitle').value = record.title;
+    document.getElementById('editCategory').value = record.category;
+    document.getElementById('editDetails').value = record.details;
+
+    document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+}
+
+function handleUpdateRecord(e) {
+    e.preventDefault();
+    const id = Number(document.getElementById('editRecordId').value);
+    const title = document.getElementById('editTitle').value.trim();
+    const category = document.getElementById('editCategory').value.trim();
+    const details = document.getElementById('editDetails').value.trim();
+
+    const index = savedRecords.findIndex(r => r.id === id);
+    if (index !== -1) {
+        savedRecords[index].title = title;
+        savedRecords[index].category = category;
+        savedRecords[index].details = details;
+
+        saveToLocalStorage();
+        renderSavedInfoTable();
+        closeEditModal();
+        if (typeof showToast === 'function') showToast('✏️ Record updated successfully!');
+    }
+}
+
+function copySavedRecord(id) {
+    const record = savedRecords.find(r => r.id === id);
+    if (!record) return;
+
+    const textToCopy = `Title: ${record.title}\nCategory: ${record.category}\nDetails: ${record.details}`;
+    navigator.clipboard.writeText(textToCopy);
+    if (typeof showToast === 'function') showToast('📋 Saved record copied to clipboard!');
+}
+
+function deleteRecord(id) {
+    savedRecords = savedRecords.filter(r => r.id !== id);
+    saveToLocalStorage();
+    updateSavedBadgeUI();
+    renderSavedInfoTable();
+    if (typeof showToast === 'function') showToast('🗑 Record deleted');
+}
+
+// FORM GENERATORS & INPUTS
+function handleLanguageChange() {
+    currentSmsLang = document.getElementById('smsLang').value;
+    handleComplainInput(document.getElementById('complainInput'));
+    handleTokenInput(document.getElementById('tokenInput'));
+}
+
+function handleComplainInput(input) {
+    if (!input) return;
+    const raw = input.value.replace(/\D/g, '');
+    input.value = raw;
+    const counter = document.getElementById('complainCounter');
+    const error = document.getElementById('complainError');
+    const output = document.getElementById('complainSmsOutputText');
+    const copyBtn = document.getElementById('copyComplainBtn');
+    const status = document.getElementById('complainStatus');
+
+    if (counter) counter.textContent = `${raw.length} / 10 digits`;
+
+    if (raw.length === 10) {
+        if (error) error.classList.add('hidden');
+        if (status) {
+            status.textContent = 'Ready';
+            status.className = 'px-2 py-0.5 bg-customGreen-500/20 text-customGreen-300 font-bold text-[10px] rounded-full';
+        }
+        if (typeof smsTemplates !== 'undefined' && smsTemplates[currentSmsLang]) {
+            output.textContent = smsTemplates[currentSmsLang].complain(raw);
+        }
+        if (copyBtn) {
+            copyBtn.disabled = false;
+            copyBtn.classList.remove('opacity-50', 'disabled:cursor-not-allowed');
+        }
+    } else {
+        if (status) {
+            status.textContent = 'Incomplete';
+            status.className = 'px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full';
+        }
+        if (output) output.textContent = '-- Complain SMS will appear here --';
+        if (copyBtn) {
+            copyBtn.disabled = true;
+            copyBtn.classList.add('opacity-50', 'disabled:cursor-not-allowed');
+        }
+        if (error) {
+            if (raw.length > 0 && raw.length !== 10) {
+                error.classList.remove('hidden');
+            } else {
+                error.classList.add('hidden');
+            }
+        }
+    }
+}
+
+function handleTokenInput(input) {
+    if (!input) return;
+    let digits = input.value.replace(/\D/g, '');
+    if (digits.length > 20) digits = digits.substring(0, 20);
+
+    const formattedInput = digits.match(/.{1,4}/g)?.join(' ') || digits;
+    input.value = formattedInput;
+
+    const counter = document.getElementById('tokenCounter');
+    const error = document.getElementById('tokenError');
+    const output = document.getElementById('tokenSmsOutputText');
+    const copyBtn = document.getElementById('copyTokenBtn');
+    const status = document.getElementById('tokenStatus');
+
+    if (counter) counter.textContent = `${digits.length} / 20 digits`;
+
+    if (digits.length === 20) {
+        if (error) error.classList.add('hidden');
+        if (status) {
+            status.textContent = 'Ready';
+            status.className = 'px-2 py-0.5 bg-customGreen-500/20 text-customGreen-300 font-bold text-[10px] rounded-full';
+        }
+        if (typeof smsTemplates !== 'undefined' && smsTemplates[currentSmsLang]) {
+            output.textContent = smsTemplates[currentSmsLang].token(formattedInput);
+        }
+        if (copyBtn) {
+            copyBtn.disabled = false;
+            copyBtn.classList.remove('opacity-50', 'disabled:cursor-not-allowed');
+        }
+    } else {
+        if (status) {
+            status.textContent = 'Incomplete';
+            status.className = 'px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full';
+        }
+        if (output) output.textContent = '-- Token SMS will appear here --';
+        if (copyBtn) {
+            copyBtn.disabled = true;
+            copyBtn.classList.add('opacity-50', 'disabled:cursor-not-allowed');
+        }
+        if (error) {
+            if (digits.length > 0 && digits.length !== 20) {
+                error.classList.remove('hidden');
+            } else {
+                error.classList.add('hidden');
+            }
+        }
+    }
+}
+
+function fillSampleSms() {
+    const complainInp = document.getElementById('complainInput');
+    const tokenInp = document.getElementById('tokenInput');
+
+    if (complainInp) complainInp.value = '8011223344';
+    if (tokenInp) tokenInp.value = '00112233445566778899';
+
+    handleComplainInput(complainInp);
+    handleTokenInput(tokenInp);
+
+    if (typeof showToast === 'function') showToast('Sample data filled into generators!');
+}
+
+function resetSmsForm() {
+    const complainInp = document.getElementById('complainInput');
+    const tokenInp = document.getElementById('tokenInput');
+    const otherForm = document.getElementById('otherInfoForm');
+
+    if (complainInp) complainInp.value = '';
+    if (tokenInp) tokenInp.value = '';
+
+    handleComplainInput(complainInp);
+    handleTokenInput(tokenInp);
+
+    if (otherForm) otherForm.reset();
+    if (typeof showToast === 'function') showToast('Inputs cleared cleanly!');
+}
+
+// Sub Section Switcher & Badge Reset
+        function switchSubSection(subName) {
+            const otherSub = document.getElementById('otherInfoSubSection');
+            const savedSub = document.getElementById('savedInfoSubSection');
+            const otherBtn = document.getElementById('otherInfoBtn');
+            const savedBtn = document.getElementById('savedInfoBtn');
+
+            if (subName === 'savedInfo') {
+                otherSub.classList.add('hidden');
+                savedSub.classList.remove('hidden');
+
+                // Clear unread badge counter when viewing saved items
+                unreadSavedCount = 0;
+                updateSavedBadgeUI();
+                renderSavedInfoTable();
+
+                savedBtn.className = "relative bg-customBlue-600 text-white border border-customBlue-600 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+                otherBtn.className = "bg-white hover:bg-customBlue-100 text-customBlue-800 border border-customBlue-400 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+            } else {
+                savedSub.classList.add('hidden');
+                otherSub.classList.remove('hidden');
+
+                otherBtn.className = "bg-customBlue-600 text-white border border-customBlue-600 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+                savedBtn.className = "relative bg-white hover:bg-customBlue-100 text-customBlue-800 border border-customBlue-400 font-bold py-2 px-3.5 rounded-lg text-xs sm:text-sm transition shadow-sm flex items-center gap-1.5";
+            }
+        }
+
+        function handleSaveInfo(e) {
+            e.preventDefault();
+            const title = document.getElementById('infoTitle').value.trim();
+            const category = document.getElementById('infoCategory').value.trim();
+            const details = document.getElementById('infoDetails').value.trim();
+
+            if (!title || !category || !details) return;
+
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            const newRecord = {
+                id: Date.now(),
+                title,
+                category,
+                details,
+                time: timeStr
+            };
+
+            savedInfoRecords.unshift(newRecord);
+            saveToLocalStorage();
+            document.getElementById('otherInfoForm').reset();
+            showToast('Saved to Saved Information (#2)!');
+        }
+
+        function deleteRecord(id) {
+            savedInfoRecords = savedInfoRecords.filter(r => r.id !== id);
+            saveToLocalStorage();
+            renderSavedInfoTable();
+            showToast('Record removed.');
+        }
+function handleSaveInfo(e) {
+            e.preventDefault();
+            const title = document.getElementById('infoTitle').value.trim();
+            const category = document.getElementById('infoCategory').value.trim();
+            const details = document.getElementById('infoDetails').value.trim();
+
+            if (!title || !category || !details) return;
+
+            const record = {
+    id: Date.now(),
+    title,
+    category,
+    details,
+    time: new Date().toLocaleString([], { 
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit' 
+    })
+};
+
+            savedRecords.push(record);
+            unreadSavedCount++;
+
+            // Reset form
+            document.getElementById('otherInfoForm').reset();
+
+            // Update badges and UI
+            updateSavedBadgeUI();
+            showToast('New Information Saved!');
+        }
+
+        // Update Notification Badge UI
+        function updateSavedBadgeUI() {
+            const badge = document.getElementById('savedCountBadge');
+            const inlineTotal = document.getElementById('savedTotalInline');
+
+            if (inlineTotal) {
+                inlineTotal.textContent = savedRecords.length;
+            }
+
+            if (badge) {
+                if (unreadSavedCount > 0) {
+                    badge.textContent = unreadSavedCount > 99 ? '99+' : unreadSavedCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+
+        // Render Saved Info Table (WITH EDIT, COPY & DELETE BUTTONS)
+        function renderSavedInfoTable() {
+            const tbody = document.getElementById('savedInfoTableBody');
+            const filter = document.getElementById('savedSearchInput').value.toLowerCase();
+            
+            if (savedRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">No saved entries found.</td></tr>`;
+                return;
+            }
+
+            const filtered = savedRecords.filter(r => 
+                r.title.toLowerCase().includes(filter) || 
+                r.category.toLowerCase().includes(filter) || 
+                r.details.toLowerCase().includes(filter)
+            );
+
+            tbody.innerHTML = filtered.map((r, i) => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-3 font-bold">${i + 1}</td>
+                    <td class="p-3 font-semibold text-customBlue-900">${r.title}</td>
+                    <td class="p-3"><span class="bg-customBlue-100 text-customBlue-800 text-xs px-2 py-1 rounded-md font-bold">${r.category}</span></td>
+                    <td class="p-3 text-gray-700">${r.details}</td>
+                    <td class="p-3 text-gray-500 text-xs">${r.time}</td>
+                    <td class="p-3 text-center flex items-center justify-center gap-1.5">
+                        <!-- Edit Row Button -->
+                        <button onclick="openEditModal(${r.id})" class="text-amber-700 hover:text-amber-900 font-bold text-xs bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-amber-200 shadow-sm">
+                            ✏️ Edit
+                        </button>
+                        <!-- Copy Row Button -->
+                        <button onclick="copySavedRecord(${r.id})" class="text-customBlue-700 hover:text-customBlue-900 font-bold text-xs bg-customBlue-50 hover:bg-customBlue-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-customBlue-200 shadow-sm">
+                            📋 Copy
+                        </button>
+                        <!-- Delete Row Button -->
+                        <button onclick="deleteRecord(${r.id})" class="text-red-600 hover:text-red-800 font-bold text-xs bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-red-200 shadow-sm">
+                            🗑 Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+function openEditModal(id) {
+            const record = savedRecords.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('editRecordId').value = record.id;
+            document.getElementById('editTitle').value = record.title;
+            document.getElementById('editCategory').value = record.category;
+            document.getElementById('editDetails').value = record.details;
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        // Close Edit Modal
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // Handle Update Saved Record
+        function handleUpdateRecord(e) {
+            e.preventDefault();
+            const id = Number(document.getElementById('editRecordId').value);
+            const title = document.getElementById('editTitle').value.trim();
+            const category = document.getElementById('editCategory').value.trim();
+            const details = document.getElementById('editDetails').value.trim();
+
+            const index = savedRecords.findIndex(r => r.id === id);
+            if (index !== -1) {
+                savedRecords[index].title = title;
+                savedRecords[index].category = category;
+                savedRecords[index].details = details;
+
+                renderSavedInfoTable();
+                closeEditModal();
+                showToast('✏️ Record updated successfully!');
+            }
+        }
+
+        // Copy Saved Record Handler
+        function copySavedRecord(id) {
+            const record = savedRecords.find(r => r.id === id);
+            if (!record) return;
+
+            const textToCopy = `Title: ${record.title}\nCategory: ${record.category}\nDetails: ${record.details}`;
+            navigator.clipboard.writeText(textToCopy);
+            showToast('📋 Saved record copied to clipboard!');
+        }
+
+
+        // Copy Saved Record Handler
+        function copySavedRecord(id) {
+            const record = savedRecords.find(r => r.id === id);
+            if (!record) return;
+
+            const textToCopy = `Title: ${record.title}\nCategory: ${record.category}\nDetails: ${record.details}`;
+            navigator.clipboard.writeText(textToCopy);
+            showToast('📋 Saved record copied to clipboard!');
+        }
+
+        function deleteRecord(id) {
+            savedRecords = savedRecords.filter(r => r.id !== id);
+            updateSavedBadgeUI();
+            renderSavedInfoTable();
+            showToast('🗑 Record deleted');
+        }
+// Toast Alert Helper
+        function showToast(msg) {
+            const toast = document.getElementById('copyToast');
+            const toastMsg = document.getElementById('toastMsg');
+            if (toastMsg) toastMsg.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2500);
+        }
+
+  function copyComplainSms() {
+            const txt = document.getElementById('complainSmsOutputText').textContent;
+            copyText(txt, 'Complain SMS copied!');
+        }
+
+        function copyTokenSms() {
+            const txt = document.getElementById('tokenSmsOutputText').textContent;
+            copyText(txt, 'Token SMS copied!');
+        }
+
+        function copyText(text, customMessage = 'Copied to clipboard!') {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(customMessage);
+                }).catch(() => {
+                    fallbackCopy(text, customMessage);
+                });
+            } else {
+                fallbackCopy(text, customMessage);
+            }
+        }
+
+        function fallbackCopy(text, customMessage) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(customMessage);
+            } catch (err) {
+                showToast('Failed to copy');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('copyToast');
+            const msgSpan = document.getElementById('toastMsg');
+            msgSpan.textContent = message;
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2500);
+        }
+
+function showError(message) {
+  const errorBox = document.getElementById('loginError');
+  errorBox.innerText = message;
+  errorBox.classList.remove('hidden');
+}
+
+function setLoading(isLoading) {
+  const loginBtn = document.getElementById('loginBtn');
+  const btnText = document.getElementById('btnText');
+  const btnSpinner = document.getElementById('btnSpinner');
+
+  loginBtn.disabled = isLoading;
+  if (isLoading) {
+    btnText.innerText = 'በመግባት ላይ... (Logging in...)';
+    btnSpinner.classList.remove('hidden');
+  } else {
+    btnText.innerText = 'ግባ (Login)';
+    btnSpinner.classList.add('hidden');
+  }
+}
+
+function togglePasswordVisibility() {
+  const passwordInput = document.getElementById('passwordInput');
+  const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+  passwordInput.setAttribute('type', type);
+}
+
+function logout() {
+  document.getElementById('loginError').classList.add('hidden');
+  document.getElementById('dashboardScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+
+  // If "Remember Me" is not active, reset the form inputs on logout
+  const rememberCheckbox = document.getElementById('rememberMeCheckbox');
+  if (!rememberCheckbox || !rememberCheckbox.checked) {
+    document.getElementById('loginForm').reset();
+  }
+}
+
+function switchTab(tabId) {
+  const tabs = ['smsTab', 'feederTab', 'placeTab', 'rsgTab', 'directoryTab', 'linksTab'];
+  const btnMap = {
+    'smsTab': 'tab6Btn',
+    'feederTab': 'tab1Btn',
+    'placeTab': 'tab2Btn',
+    'rsgTab': 'tab3Btn',
+    'directoryTab': 'tab4Btn',
+    'linksTab': 'tab5Btn'
+  };
+
+  // Reset all tabs & button styles
+  tabs.forEach(t => {
+    const tabEl = document.getElementById(t);
+    if (tabEl) tabEl.classList.add('hidden');
+
+    const btn = document.getElementById(btnMap[t]);
+    if (btn) {
+      btn.className = "w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-base text-white bg-emerald-950 hover:bg-emerald-900/50 border border-white/20 hover:border-white/50 transition group text-left";
+    }
+  });
+
+  // Activate selected tab & style active button
+  const selectedTab = document.getElementById(tabId);
+  if (selectedTab) selectedTab.classList.remove('hidden');
+
+  const activeBtn = document.getElementById(btnMap[tabId]);
+  if (activeBtn) {
+    activeBtn.className = "w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-base text-amber-400 bg-emerald-900/80 border border-white/30 shadow-inner transition group text-left";
+  }
+}
+
+// Helper toast notification
+function showToast(msg) {
+  const toast = document.getElementById('copyToast');
+  if (toast) {
+    toast.innerText = `✅ ${msg}`;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2500);
+  }
+}
+
+// ==========================================
+// 2. SMS GENERATOR LOGIC
+// ==========================================
+
+const smsTemplates = {
+  am: {
+    complain: (num) => `ውድ ደንበኛችን ፡-   ቅሬታዎ የተመዘገበበት የመከታተያ  ቁጥር   ${num}  ነው።  እባክዎን እስኪደወልሎት  ስልክዎትን ክፍት አድርገው  በትግስት ይጠብቁ ፡፡ ለተጨማሪ መረጃ 905 ይደውሉ።                                                                
+             
+                            የኢትዮጵያ ኤሌክትሪክ አገልግሎት!`,
+    token: (tok) => `ውድ  ደንበኛችን ፡- የክፍያ ቶከን ቁጥርዎ    ${tok}  ነው።አገልግሎታችንን  ስለተጠቀሙ እናመሰግናለን ፡፡ ለተጨማሪ መረጃ 905 ይደውሉ:: 
+
+                             
+                            የኢትዮጵያ  ኤሌክትሪክ  አገልግሎት!`
+  },
+  om: {
+    complain: (num) => `Kabajamoo maamila keenya :- Lakkoofsi galmee keessanii ${num} dha. Maaloo hamma bilbilamutti bilbila keessan banaa gochuun obsaan eegaa. Odeeffannoo dabalataatiif 905 irratti bilbilaa.
+
+                              Tajaajila Elektriika Itoophiyaa!`,
+    token: (tok) => `Kabajamoo maamila keenya:- Lakkoofsi kaffaltii tokeenii keessanii ${tok} dha. Tajaajila keenya waan fayyadamataniif galatoomaa. Odeeffannoo dabalataatiif 905 irratti bilbilaa.
+
+                             Tajaajila Elektriika Itoophiyaa!`
+  },
+  ti: {
+    complain: (num) => ` ክቡር ዓሚል  ፡- ቁጽሪ ምክትታል ጥርዓንካ ${num} እዩ። ቤዛኩም ስልክኹም ወሊዕኩም ብትዕግስቲ ጻውዒት ተጸበዩ። ንተወሳኺ ሓበሬታ ናብ 905 ደውሉ። 
+
+                             ኣገልግሎት ኤሌክትሪክ ኢትዮጵያ!`,
+    token: (tok) => `ክቡር ዓሚል ፡- ቁፅሪ ናይ ክፍሊት ቶከንኩም ${tok} እዩ። ኣገልግሎትና ስለ ዝተጠቐምኩም የቐንየልና።። ንተወሳኺ ሓበሬታ ናብ 905 ደውሉ። 
+
+                             ኣገልግሎት ኤሌክትሪክ ኢትዮጵያ!`
+  },
+  en: {
+    complain: (num) => `Dear  customer,  your complain service request number is ${num}. Please keep your phone line open and wait patiently until the responsible team contact you. For more information, call 905.
+
+
+                            Ethiopian Electric  Utility!`,
+    token: (tok) => `Dear  customer, your payment token number is  ${tok}. Thank you for using our service. For more information, call 905.
+
+
+                            Ethiopian Electric Utility!`
+  }
+};
+
+function handleComplainInput(input) {
+  input.value = input.value.replace(/\D/g, '').slice(0, 10);
+  document.getElementById('complainCounter').innerText = `${input.value.length} / 10 digits`;
+  
+  const err = document.getElementById('complainError');
+  if (input.value.length > 0 && input.value.length < 10) {
+    err.classList.remove('hidden');
+  } else {
+    err.classList.add('hidden');
+  }
+  generateSms();
+}
+
+function handleTokenInput(input) {
+  // 1. Strip non-digits and cap at 20 raw digits
+  const rawDigits = input.value.replace(/\D/g, '').slice(0, 20);
+  
+  // 2. Format with spaces after every 4 digits
+  input.value = rawDigits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  
+  // 3. Counter and error checks use the raw digit count
+  document.getElementById('tokenCounter').innerText = `${rawDigits.length} / 20 digits`;
+  
+  const err = document.getElementById('tokenError');
+  if (rawDigits.length > 0 && rawDigits.length < 20) {
+    err.classList.remove('hidden');
+  } else {
+    err.classList.add('hidden');
+  }
+  generateSms();
+}
+
+function generateSms() {
+  const lang = document.getElementById('smsLang').value;
+  const complainVal = document.getElementById('complainInput').value;
+  
+  // Get raw digits and formatted string for token
+  const rawTokenVal = document.getElementById('tokenInput').value.replace(/\D/g, '');
+  const formattedTokenVal = document.getElementById('tokenInput').value;
+
+  // Complain Output
+  const complainOut = document.getElementById('complainSmsOutputText');
+  const complainBtn = document.getElementById('copyComplainBtn');
+  const complainStatus = document.getElementById('complainStatus');
+
+  if (complainVal.length === 10) {
+    complainOut.innerText = smsTemplates[lang].complain(complainVal);
+    complainBtn.disabled = false;
+    complainStatus.innerText = "Ready";
+    complainStatus.className = "px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold text-[10px] rounded-full";
+  } else {
+    complainOut.innerText = "-- Complain SMS will appear here --";
+    complainBtn.disabled = true;
+    complainStatus.innerText = "Incomplete";
+    complainStatus.className = "px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full";
+  }
+
+  // Token Output
+  const tokenOut = document.getElementById('tokenSmsOutputText');
+  const tokenBtn = document.getElementById('copyTokenBtn');
+  const tokenStatus = document.getElementById('tokenStatus');
+
+  if (rawTokenVal.length === 20) {
+    // Pass formattedTokenVal (with spaces) or rawTokenVal to your SMS template as needed
+    tokenOut.innerText = smsTemplates[lang].token(formattedTokenVal);
+    tokenBtn.disabled = false;
+    tokenStatus.innerText = "Ready";
+    tokenStatus.className = "px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold text-[10px] rounded-full";
+  } else {
+    tokenOut.innerText = "-- Token SMS will appear here --";
+    tokenBtn.disabled = true;
+    tokenStatus.innerText = "Incomplete";
+    tokenStatus.className = "px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-[10px] rounded-full";
+  }
+}
+
+function fillSampleSms() {
+  document.getElementById('complainInput').value = "8011223344";
+  // Pass raw digits only; handleTokenInput will add the spaces automatically
+  document.getElementById('tokenInput').value = "00112233445566778899";
+  handleComplainInput(document.getElementById('complainInput'));
+  handleTokenInput(document.getElementById('tokenInput'));
+}
+
+function resetSmsForm() {
+  document.getElementById('complainInput').value = "";
+  document.getElementById('tokenInput').value = "";
+  handleComplainInput(document.getElementById('complainInput'));
+  handleTokenInput(document.getElementById('tokenInput'));
+}
+
+function copyComplainSms() {
+  const text = document.getElementById('complainSmsOutputText').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast("Complain SMS Copied!"));
+}
+
+function copyTokenSms() {
+  const text = document.getElementById('tokenSmsOutputText').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast("Token SMS Copied!"));
+}
+
+// ==========================================
+// 3. FEEDER TABLE & PLACE SEARCH
+// ==========================================
+
+function renderFeederTable(data) {
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+  document.getElementById('recordCount').innerText = `Total: ${data.length} feeders`;
+
+  data.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.className = "hover:bg-emerald-50/50 transition";
+    
+    // Escaping quotes to prevent syntax errors in onclick attributes
+    const safeCode = item.code.replace(/'/g, "\\'");
+    const safeArea = item.area.replace(/'/g, "\\'");
+
+    tr.innerHTML = `
+      <td class="p-4 font-mono font-bold text-emerald-900 border-b border-gray-100">${item.code}</td>
+      <td class="p-4 text-gray-800 border-b border-gray-100">${item.area}</td>
+      <td class="p-4 text-center border-b border-gray-100 space-x-2">
+                <button onclick="copyForExcel('${safeCode}', '${safeArea}')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition shadow-sm">
+          Copy for Excel
+        </button>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+// Helper function to copy tab-separated values directly to the clipboard
+function copyForExcel(code, area) {
+  // \t creates a tab break, which Excel uses to place data into adjacent cells
+  const excelFormat = `${code}\t${area}`;
+  
+  navigator.clipboard.writeText(excelFormat).then(() => {
+    showToast("Row copied!");
+  }).catch(err => {
+    console.error("Failed to copy data: ", err);
+  });
+}
+
+// #<!-- Toast Alert for Copy -->
+function showToast(message) {
+  // Check if a toast element already exists, or create one
+  let toast = document.getElementById("copy-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "copy-toast";
+    
+    // Toast Styling (Updated to Green)
+    Object.assign(toast.style, {
+      position: "fixed",
+      bottom: "20px",
+      right: "20px",
+      backgroundColor: "#16a34a", // Emerald green color
+      color: "#ffffff",
+      padding: "12px 20px",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      fontSize: "14px",
+      fontFamily: "sans-serif",
+      fontWeight: "500",
+      zIndex: "9999",
+      opacity: "0",
+      transition: "opacity 0.3s ease, transform 0.3s ease",
+      transform: "translateY(10px)",
+      pointerEvents: "none"
+    });
+    
+    document.body.appendChild(toast);
+  }
+
+  // Set message and animate in
+  toast.textContent = message;
+  toast.style.opacity = "1";
+  toast.style.transform = "translateY(0)";
+
+  // Auto-hide after 3 seconds
+  clearTimeout(toast.timeoutId);
+  toast.timeoutId = setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+  }, 3000);
+}
+function filterFeederTable() {
+  const q = document.getElementById('feederInput').value.toLowerCase().trim();
+  const filtered = feederDataArray.filter(i => 
+    i.code.toLowerCase().includes(q) || i.area.toLowerCase().includes(q)
+  );
+  renderFeederTable(filtered);
+}
+
+function quickSelect(val) {
+  document.getElementById('feederInput').value = val;
+  filterFeederTable();
+}
+
+function searchFeedersByPlace() {
+  const q = document.getElementById('placeInput').value.trim();
+  const container = document.getElementById('placeResultsContainer');
+  container.innerHTML = '';
+
+  if (!q) {
+    container.innerHTML = `<div class="p-6 bg-gray-50 border border-gray-200 rounded-2xl text-lg text-gray-500 text-center font-bold">የቦታ ወይም የሰፈር ስም ከላይ ያስገቡ...</div>`;
+    return;
+  }
+
+  const lowerQuery = q.toLowerCase();
+  const matches = feederDataArray.filter(item =>
+    item.area.toLowerCase().includes(lowerQuery) || item.code.toLowerCase().includes(lowerQuery)
+  );
+
+  if (matches.length === 0) {
+    container.innerHTML = `<div class="p-6 bg-red-50 border border-red-200 rounded-2xl text-lg text-red-600 text-center font-bold">ምንም የተገኘ ፊደር የለም!</div>`;
+    return;
+  }
+
+  matches.forEach(item => {
+    let highlightedAreas = item.area;
+    if (q.length > 0) {
+      const regex = new RegExp(`(${q})`, 'gi');
+      highlightedAreas = highlightedAreas.replace(regex, '<mark class="bg-yellow-300 font-extrabold px-2 py-0.5 rounded text-gray-900">$1</mark>');
+    }
+
+    const card = document.createElement('div');
+    card.className = "p-6 bg-amber-50/80 border-2 border-amber-300 rounded-2xl shadow-sm space-y-3";
+    card.innerHTML = `
+      <div class="flex justify-between items-center">
+        <span class="font-mono font-bold text-amber-950 bg-amber-200 px-3.5 py-1.5 rounded-xl text-lg shadow-sm">${item.code}</span>
+        <button onclick="copyText('${item.code}')" class="text-sm bg-white border-2 border-amber-400 text-amber-950 font-bold px-4 py-2 rounded-xl hover:bg-amber-100 transition shadow-sm">ኮድ ቅዳ (Copy)</button>
+      </div>
+      <p class="text-gray-900 text-lg leading-relaxed font-semibold">${highlightedAreas}</p>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function copyText(txt) {
+  navigator.clipboard.writeText(txt).then(() => showToast("Copied cleanly!"));
+}
+
+// ==========================================
+// 4. RSG CENTER LOGIC
+// ==========================================
+
+function renderRsgCenter(data) {
+  const container = document.getElementById('rsgContainer');
+  container.innerHTML = '';
+
+  data.forEach(item => {
+    const card = document.createElement('div');
+    card.className = "p-5 bg-gray-50 border border-gray-200 rounded-2xl text-lg flex justify-between items-center shadow-sm";
+    card.innerHTML = `
+      <div class="flex items-center gap-4">
+        <span class="font-mono font-bold text-emerald-950 bg-emerald-100 px-3.5 py-1.5 rounded-xl text-base">RSG: ${item.rsg}</span>
+        <span class="text-gray-900 font-bold text-lg">${item.detail}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function filterRsgCenter() {
+  const query = document.getElementById('rsgSearchInput').value.trim().toLowerCase();
+  if (!query) {
+    renderRsgCenter(rsgCenterData);
+    return;
+  }
+
+  const filtered = rsgCenterData.filter(item =>
+    item.rsg.toLowerCase().includes(query) || item.detail.toLowerCase().includes(query)
+  );
+  renderRsgCenter(filtered);
+}
+
+// ==========================================
+// 5. DIRECTORY LOGIC
+// ==========================================
+
+function renderDirectory(data) {
+  const container = document.getElementById('directoryContainer');
+  container.innerHTML = '';
+
+  data.forEach(group => {
+    const section = document.createElement('div');
+    section.className = "bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4";
+
+    let itemsHtml = group.items.map(item => {
+      const parts = item.split('|');
+      const name = parts[0].trim();
+      const phone = parts[1] ? parts[1].trim() : '';
+
+      return `
+        <div class="flex justify-between items-center py-3 border-b border-gray-200/90 last:border-0 text-lg">
+          <span class="text-gray-900 font-bold">${name}</span>
+          ${phone && phone !== '—' 
+            ? `<a href="tel:${phone}" class="font-mono text-base bg-emerald-100 text-emerald-950 font-extrabold px-4 py-2 rounded-xl hover:bg-emerald-200 transition shadow-sm">📞 ${phone}</a>` 
+            : '<span class="text-base text-gray-400 font-bold">N/A</span>'}
+        </div>
+      `;
+    }).join('');
+
+    section.innerHTML = `
+      <h3 class="font-extrabold text-emerald-950 text-lg uppercase tracking-wider border-b-2 border-emerald-200 pb-2.5">${group.category}</h3>
+      <div class="divide-y divide-gray-100">${itemsHtml}</div>
+    `;
+    container.appendChild(section);
+  });
+}
+
+function filterDirectory() {
+  const query = document.getElementById('dirSearchInput').value.trim().toLowerCase();
+  if (!query) {
+    renderDirectory(directoryData);
+    return;
+  }
+
+  let filtered = [];
+  directoryData.forEach(group => {
+    const matchedItems = group.items.filter(item => item.toLowerCase().includes(query));
+    if (matchedItems.length > 0 || group.category.toLowerCase().includes(query)) {
+      filtered.push({
+        category: group.category,
+        items: matchedItems.length > 0 ? matchedItems : group.items
+      });
+    }
+  });
+
+  renderDirectory(filtered);
+}
+    </script>
+</body>
+</html>
